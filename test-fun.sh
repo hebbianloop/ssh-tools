@@ -22,6 +22,7 @@ Confirm Input Arguments\n
 
 EOF
 )
+read -p "Proceed? [Y/N]" proceed
 }
 
 confirm_input
