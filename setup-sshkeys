@@ -235,8 +235,8 @@ function stdssh_addagent(){
 	source ${sshagentfile}
     eval "$(ssh-agent -s)"
     # Mac OS X specific params
-    if [ "${uname}" = 'Darwin' ]; then
-        if [[ "$(uname -r)" = '16.5.'* ]; then
+    if [[ $(uname) = 'Darwin' ]]; then
+        if [[ $(uname -r) = '16.5.'* ]; then
             echo -e "Host *\n  AddKeysToAgent yes\n  UseKeychain yes\n  IdentityFile ${privkey}\n" >> ${ssh_home}/config
         fi
     fi
