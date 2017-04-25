@@ -7,8 +7,8 @@ user=$(whoami)      # User @ Origin
 host=$(hostname)        # Destination
 user_alias=$(whoami)    # User Name @ Destination
 
-ssh_home="/Users/${user}/.ssh"              # Stash ssh deets here
-sshagentfile="/Users/${user}/.ssh_agent"    # Parameters for ssh-agent
+ssh_home="${HOME}/.ssh"              # Stash ssh deets here
+sshagentfile="{HOME}/.ssh_agent"    # Parameters for ssh-agent
 
 keytype='dsa'
 x11=''
@@ -182,14 +182,14 @@ local confirm_user_input=$(cat <<-EOF
     Setting up Keyless SSH Tunnel :: ${user}@${client} 📡  ⇢  🔑  ⇢ ${user_alias}@${host}
     \n
     \n
-    \t    🖥  HOST\t\t            ::      ${host}\n
+    \t    🖥  HOST\t\t\t          ::      ${host}\n
     \t    👤  USER ALIAS\t\t      ::      ${user_alias}\n\n
     \t    📁  SSHDIR\t\t          ::      ${ssh_home}\n
     \t    📝  SSHAGENTFILE\t\t    ::      ${sshagentfile}\n
     \t    🔐  KEYTYPE\t\t         ::      ${keytype}\n\n
     \t    🔑  PRIVATEKEY\t\t      ::      ${privkey}\n
     \t    🗝  PUBLICKEY\t\t       ::      ${pubkey}\n\n    
-    \t    ⚙   KEYGEN OPTIONS\t\t  ::      ${opts}
+    \t    ⚙   KEYGEN OPTIONS\t    ::      ${opts}
 EOF
     )   
 # Check if user_alias just wants to see status
@@ -250,8 +250,8 @@ function stdssh_reset(){
             rm -v ${ssh_home}/${privkey}
             rm -v ${ssh_home}/${pubkey}
             rm -v ${sshagentfile}
-            rm -v /Users/${user}/.bash_logout
-            rm -v /Users/${user}/.bash_login
+            rm -v ${HOME}/.bash_logout
+            rm -v ${HOME}/.bash_login
             #echo -e "\n\n 📡 ⚡️ ⚡️  Removing All Remote Keys, Authorized Hosts & ssh-agent Settings"
             #ssh ${user_alias}@${host} "rm -rv ~/.keys;"
         fi
