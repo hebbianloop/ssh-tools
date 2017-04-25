@@ -11,8 +11,6 @@ ssh_home="/Users/${user}/.ssh"              # Stash ssh deets here
 sshagentfile="/Users/${user}/.ssh_agent"    # Parameters for ssh-agent
 
 keytype='dsa'
-privkey='id_'${keytype}
-pubkey='id_'${keytype}'.pub'
 x11=''
 
 proceed=''
@@ -161,7 +159,8 @@ while :; do
             fi
             ;;
         -?*)
-            printf 'Warn: Unknown option (ignored): %s\n' "%1" >&2
+            printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
+            exit
             ;;
         *)
             break
@@ -169,6 +168,9 @@ while :; do
     shift
 done
 # ----------------------------------------------------------------
+#                  Build Private and Public Key Names
+privkey='id_'${keytype}
+pubkey='id_'${keytype}'.pub'
 #                 Assign Option String for SSH-KEYGEN
 opts="-t ${keytype} ${bits} ${x11}"
 # ----------------------------------------------------------------
@@ -180,30 +182,38 @@ local confirm_user_input=$(cat <<-EOF
     Setting up Keyless SSH Tunnel :: ${user}@${client} 📡  ⇢  🔑  ⇢ ${user_alias}@${host}
     \n
     \n
-    \t    🖥  HOST            ::      ${host}\n
-    \t    👤  user_alias            ::      ${user_alias}\n\n
-    \t    📁  SSHDIR          ::      ${ssh_home}\n
-    \t    📝  SSHAGENTFILE    ::      ${sshagentfile}\n
-    \t    🔐  KEYTYPE         ::      ${keytype}\n\n
-    \t    🔑  PRIVATEKEY      ::      ${privkey}\n
-    \t    🗝  PUBLICKEY       ::      ${pubkey}\n\n    
-    \t    ⚙   KEYGEN OPTIONS  ::      ${opts}
+    \t    🖥  HOST\t\t            ::      ${host}\n
+    \t    👤  USER ALIAS\t\t      ::      ${user_alias}\n\n
+    \t    📁  SSHDIR\t\t          ::      ${ssh_home}\n
+    \t    📝  SSHAGENTFILE\t\t    ::      ${sshagentfile}\n
+    \t    🔐  KEYTYPE\t\t         ::      ${keytype}\n\n
+    \t    🔑  PRIVATEKEY\t\t      ::      ${privkey}\n
+    \t    🗝  PUBLICKEY\t\t       ::      ${pubkey}\n\n    
+    \t    ⚙   KEYGEN OPTIONS\t\t  ::      ${opts}
 EOF
     )   
 # Check if user_alias just wants to see status
 [ ! ${proceed} ] || [ ! ${quiet} ] && echo -e ${confirm_user_input}
 [ ! ${quiet} ] && [ -z ${proceed} ] && read -p "Setup New Handshake? [Y/N]  :: " proceed
-[ ! ${quiet} ] && echo -e "\n"
+echo -e "\n"
+[ "${proceed}" = "N" ] || [ "${proceed}" = "n" ] && exit
 }
 # Define Function
 ## This function checks for existence of hidden ssh directory in user_alias home and generates a
 ## public/private key pair and adds the public key to the authorized keys file.
 function stdssh_genaddkeys(){
-    # Check if ssh home dir exists and generate keys
-	[ ! -d ${ssh_home} ] && mkdir -p ${ssh_home} && ssh-keygen ${opts}
+    # Check if ssh home dir exists
+	[ ! -d ${ssh_home} ] && mkdir -p ${ssh_home}
+    # Generate keys
+    ssh-keygen ${opts}
     #echo -e "\n ** Adding public key to authorized keys and setting permissions\n"
 	#cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
-	[ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys && chmod 600 ${ssh_home}/authorized_keys && chmod 600 ${ssh_home}/${privkey}
+}
+# Define Function
+## Check permissions
+function stdssh_perms(){
+    [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys && chmod 600 ${ssh_home}/authorized_keys
+    chmod 600 ${ssh_home}/${privkey}
 }
 # Define Function
 ## This function takes a remote host, username, and path to a private key and copies it
@@ -214,7 +224,7 @@ function stdssh_cpkey(){
 	local privkey=${3}
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
-    cat ${ssh_home}/${pubkey} | ssh ${username}'@'${host} '[ ! -d .ssh ] && mkdir .ssh && cat >> .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'
+    cat ${ssh_home}/${pubkey} | ssh ${username}'@'${host} '[ ! -d .ssh ] && mkdir .ssh; cat >> .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'
 	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
 	#ssh ${username}'@'${host} "mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
 }
@@ -237,7 +247,8 @@ function stdssh_reset(){
         read -p "Are you sure you want to delete all ssh-agent files, .bash_logout and .ssh directory?  [Y/N]  :: " doublecheck
         if [ "${doublecheck}" = 'Y' ] || [ "${doublecheck}" = 'y' ]; then
             echo -e "\n\n 🔥🗑  Removing All Local Keys, Authorized Hosts & ssh-agent Settings"
-            rm -vr ${ssh_home}
+            rm -v ${ssh_home}/${privkey}
+            rm -v ${ssh_home}/${pubkey}
             rm -v ${sshagentfile}
             rm -v /Users/${user}/.bash_logout
             rm -v /Users/${user}/.bash_login
@@ -254,10 +265,12 @@ function stdssh_run(){
     local privkey=${3}
     # Check for Reset
     stdssh_reset
-    ## Confirm input arguments
+    ## Run only if User confirms input arguments 
     confirm_input
-    ## Run Only if user_alias Says Yes 
-    [ "${proceed}" = 'Y' ] || [ "${proceed}" = 'y' ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${username} ${privkey} #&& stdssh_addagent ${privkey}
+    ## Generate Keys
+    stdssh_genaddkeys
+    stdssh_cpkey ${host} ${username} ${privkey}
+    #&& stdssh_addagent ${privkey}
     ## Run Without user_alias Check if Quiet Option is Presented
     #[ $quiet ] && stdssh_genaddkeys && stdssh_cpkey $host $username $privkey && stdssh_addagent $privkey && stdssh_cleanup
 }
