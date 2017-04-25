@@ -8,7 +8,7 @@ host=$(hostname)        # Destination
 user_alias=$(whoami)    # User Name @ Destination
 
 ssh_home="${HOME}/.ssh"              # Stash ssh deets here
-sshagentfile="{HOME}/.ssh_agent"    # Parameters for ssh-agent
+sshagentfile="${HOME}/.ssh_agent"    # Parameters for ssh-agent
 
 keytype='dsa'
 x11=''
@@ -171,7 +171,7 @@ done
 privkey='id_'${keytype}
 pubkey='id_'${keytype}'.pub'
 #                 Assign Option String for SSH-KEYGEN
-opts="-t ${keytype} ${bits} ${x11}"
+opts="-t ${keytype} ${bits} ${x11} -f ${ssh_home}/${privkey}"
 # ----------------------------------------------------------------
 # Define Function
 ## This function displays options to user_alias and asks for verification
@@ -205,13 +205,15 @@ function stdssh_genaddkeys(){
 	[ ! -d ${ssh_home} ] && mkdir -p ${ssh_home}
     # Generate keys
     ssh-keygen ${opts}
-    #echo -e "\n ** Adding public key to authorized keys and setting permissions\n"
-	#cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
+    # Create authorized keys file
+    [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys
+    echo -e "\n ** Adding public key to authorized keys and setting permissions\n"
+	cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
 }
 # Define Function
 ## Check permissions
 function stdssh_perms(){
-    [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys && chmod 600 ${ssh_home}/authorized_keys
+    chmod 600 ${ssh_home}/authorized_keys
     chmod 600 ${ssh_home}/${privkey}
 }
 # Define Function
@@ -223,26 +225,31 @@ function stdssh_cpkey(){
 	local privkey=${3}
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
-    cat ${ssh_home}/${pubkey} | ssh ${username}'@'${host} '[ ! -d .ssh ] && mkdir .ssh; cat >> .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'
-	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
-	#ssh ${username}'@'${host} "mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
+    echo -e "Appending $client pubkey to authorized keys on $host"
+    cat ${ssh_home}'/'${pubkey} | ssh ${username}'@'${host} '[ ! -d ~/.ssh ] && mkdir ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+    echo -e "Sending $client private key to $host"
+	scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
+    echo -e "Setting up $client private key on $host"
+	ssh ${username}'@'${host} "[ ! -e  ~/.keys ] && mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
 }
 # Define Function
 ## Setup and add private key to agent
 function stdssh_addagent(){
 	local privkey=${1}
     ssh-agent > ${sshagentfile}
-	source ${sshagentfile}
-    eval "$(ssh-agent -s)"
+#	source ${sshagentfile}
+    eval `ssh-agent -s`
     # Mac OS X specific params
     if [[ $(uname) = 'Darwin' ]]; then
         if [[ $(uname -r) = '16.5.'* ]]; then
-            echo -e "Host *\n  AddKeysToAgent yes\n  UseKeychain yes\n  IdentityFile ${privkey}\n" >> ${ssh_home}/config
+            echo -e "\nHost *\n  AddKeysToAgent yes\n  UseKeychain yes\n  IdentityFile ${ssh_home}/${privkey}\n" >> ${ssh_home}/config
         fi
     fi
-	ssh-add -K ${ssh_home}/${privkey}
-    #[ ! -e "~/.bash_logout" ] && echo -e "\n## quit ssh-agent at logout\n kill ${SSH_AGENT_PID}\n\n" > ~/.bash_logout 
-    #[ -e "~/.bash_logout" ] && echo -e "\n## quit ssh-agent at logout\n kill ${SSH_AGENT_PID}\n\n" >> ~/.bash_logout     
+    # Add private key
+    echo 'ssh-add -K '${ssh_home}/${privkey}
+    # Start SSH-AGENT at log in and log out
+    echo -e "\n## start ssh agent at login\n ssh-agent > ${HOME}/${sshagentfile} && source ${HOME}/${sshagentfile}; ssh-add ${privkey}\n\n" >> ${HOME}/.bash_login 
+    echo -e "\n## quit ssh-agent at logout\nkill ${SSH_AGENT_PID}\n\n" >> ${HOME}/.bash_logout 
 }
 # Define Function
 ## Reset
@@ -255,6 +262,7 @@ function stdssh_reset(){
             echo -e "\n\n 🔥🗑  Removing All Local Keys, Authorized Hosts & ssh-agent Settings"
             rm -v ${ssh_home}/${privkey}
             rm -v ${ssh_home}/${pubkey}
+            rm -v ${ssh_home}/config
             rm -v ${sshagentfile}
             rm -v ${HOME}/.bash_logout
             rm -v ${HOME}/.bash_login
@@ -275,10 +283,12 @@ function stdssh_run(){
     confirm_input
     ## Generate Keys
     stdssh_genaddkeys
+    ## Copy Keys to Host
     stdssh_cpkey ${host} ${username} ${privkey}
-    #&& stdssh_addagent ${privkey}
-    ## Run Without user_alias Check if Quiet Option is Presented
-    #[ $quiet ] && stdssh_genaddkeys && stdssh_cpkey $host $username $privkey && stdssh_addagent $privkey && stdssh_cleanup
+    ## Add Agent to Read Passphrase
+    stdssh_addagent ${privkey}
+    ## Set Appropriate Permissions
+    stdssh_perms
 }
 
 function stdssh(){
