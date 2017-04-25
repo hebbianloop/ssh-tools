@@ -236,7 +236,7 @@ function stdssh_cpkey(){
 ## Setup and add private key to agent
 function stdssh_addagent(){
 	local privkey=${1}
-    ssh-agent > ${sshagentfile}
+#    ssh-agent > ${sshagentfile}
 #	source ${sshagentfile}
     eval `ssh-agent -s`
     # Mac OS X specific params
@@ -246,10 +246,10 @@ function stdssh_addagent(){
         fi
     fi
     # Add private key
-    echo 'ssh-add -K '${ssh_home}/${privkey}
+    ssh-add -K ${ssh_home}/${privkey}
     # Start SSH-AGENT at log in and log out
-    echo -e "\n## start ssh agent at login\nssh-agent > ${sshagentfile} && source ${sshagentfile}\nssh-add ${ssh_home}/${privkey}\n\n" >> ${HOME}/.bash_login 
-    echo -e '\n## quit ssh-agent at logout\nkill ${SSH_AGENT_PID}\n\n' >> ${HOME}/.bash_logout 
+    echo -e "\n## start ssh agent at login\nssh-agent > ${sshagentfile} && source ${sshagentfile}\nssh-add -D && ssh-add ${ssh_home}/${privkey}\n\n" >> ${HOME}/.bash_login 
+    echo -e '\n## quit ssh-agent at logout\nssh-add -D && kill ${SSH_AGENT_PID}\n\n' >> ${HOME}/.bash_logout 
 }
 # Define Function
 ## Reset
