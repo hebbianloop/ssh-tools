@@ -1,24 +1,25 @@
 #!/bin/bash
 ## Generate Public/Private Key Pairs for Keyless Login to Remote Host
 
-lochost=$(hostname)
-locuname=$(whoami)
+client=$(hostname)  # Origin 
+user=$(whoami)      # User @ Origin
 
-remhost=$(hostname)
-remuname=$(whoami)
+host=$(hostname)        # Destination
+user_alias=$(whoami)    # User Name @ Destination
 
-ssh_home="/Users/$(whoami)/.ssh"
-sshagentfile="/Users/$(whoami)/.ssh_agent"
+ssh_home="/Users/${user}/.ssh"              # Stash ssh deets here
+sshagentfile="/Users/${user}/.ssh_agent"    # Parameters for ssh-agent
 
-keytype='rsa'
+keytype='dsa'
 privkey='id_'${keytype}
-pubkey='/id_'${keytype}'.pub'
+pubkey='id_'${keytype}'.pub'
 x11=''
 
 proceed=''
 quiet=''
 resetkeys=''
 handshake=''
+bits=''
 
 rseed=0 # used for creating random key name for remote (security measure)
 # Define Function
@@ -40,23 +41,24 @@ This program checks for existence of private/public keypairs for passwordless ss
 
         -sshagent   file for ssh-agent 
         -keytype    rsa | dsa
+        -bits       number of bits to encode key (rsa - 2048, dsa - 1024)
         -sshdir     path to .ssh directory (keys stored here)
         -prvkey     path to private key
         -pubkey     path to public key
-        --x11        permit X11 forwarding 
+        --x11       permit X11 forwarding 
 
     OTHER FLAGS
 
-        --reset         delete sshdir and associated keys (CAUTION :: all host keys are deleted)
-        --2waytunnel    create public/private keys on both hosts (bilateral keyless login)  
-        --quiet         run with minimal user input
         --status        print parameters for ssh setup and exit
+        --quiet         run with minimal user_alias input
+        --reset         delete sshdir and associated keys (CAUTION :: all host keys are deleted)        
+        
+        --2waytunnel    create public/private keys on both hosts (bilateral keyless login)  
+        
 
 
 EOF
 }
-
-
 # Parse Options 
 ## Shift through standard input and assign to variables using option flags
 while :; do
@@ -88,7 +90,7 @@ while :; do
         ;;
         -host)
             if [ -n "${2}" ]; then
-                remhost=${2}
+                host=${2}
                 shift
             else                                                                                                                                                                                                                 
                 echo "ERROR: -host requires a non-empty option argument.\n" >&2
@@ -97,7 +99,7 @@ while :; do
             ;;
         -uname)
             if [ -n "${2}" ]; then
-                remuname=${2}
+                user_alias=${2}
                 shift
             else
                 echo "ERROR: -uname requires a non-empty option argument.\n" >&2
@@ -106,7 +108,7 @@ while :; do
             ;;
         -sshagent)
             if [ -n "${2}" ]; then
-                sshagentfile=$2
+                sshagentfile=${2}
                 shift
             else
                 echo "ERROR: -sshagent requires a non-empty option argument.\n" >&2
@@ -115,7 +117,7 @@ while :; do
             ;;
         -sshdir)
             if [ -n "${2}" ]; then
-                ssh_home=$2
+                ssh_home=${2}
                 shift
             else
                 echo "ERROR: -sshdir requires a non-empty option argument.\n" >&2
@@ -124,16 +126,25 @@ while :; do
             ;;
         -keytype)
             if [ -n "${2}" ]; then
-                keytype=$2
+                keytype=${2}
                 shift
             else
                 echo "ERROR -keytype requires a non-empty option argument" >&2
                 exit
             fi
-            ;;                       
+            ;;
+        -bits)
+            if [ -n "${2}" ]; then
+                bits='-b '$2
+                shift
+            else
+                echo "ERROR -bits requires a non-empty option argument" >&2
+                exit
+            fi
+            ;;                                   
         -prvkey)
             if [ -n "${2}" ]; then
-                privkey=$2
+                privkey=${2}
                 shift
             else
                 echo "ERROR: -prvkey requires a non-empty option argument.\n" >&2
@@ -142,7 +153,7 @@ while :; do
             ;;
         -pubkey)
             if [ -n "${2}" ]; then
-                pubkey=$2
+                pubkey=${2}
                 shift
             else
                 echo "ERROR -pubkey requires a non-empty option argument" >&2
@@ -157,18 +168,20 @@ while :; do
     esac
     shift
 done
-## Assign Option String for SSH-KEYGEN
-opts="-t ${keytype} ${x11}"
+# ----------------------------------------------------------------
+#                 Assign Option String for SSH-KEYGEN
+opts="-t ${keytype} ${bits} ${x11}"
+# ----------------------------------------------------------------
 # Define Function
-## This function displays options to user and asks for verification
+## This function displays options to user_alias and asks for verification
 function confirm_input(){
 local confirm_user_input=$(cat <<-EOF
     \n
-    Setting up Keyless SSH Tunnel :: ${locuname}@${lochost} 📡  ⇢  🔑  ⇢ ${remuname}@${remhost}
+    Setting up Keyless SSH Tunnel :: ${user}@${client} 📡  ⇢  🔑  ⇢ ${user_alias}@${host}
     \n
     \n
-    \t    🖥  HOST            ::      ${remhost}\n
-    \t    👤  USERNAME        ::      ${remuname}\n\n
+    \t    🖥  HOST            ::      ${host}\n
+    \t    👤  user_alias            ::      ${user_alias}\n\n
     \t    📁  SSHDIR          ::      ${ssh_home}\n
     \t    📝  SSHAGENTFILE    ::      ${sshagentfile}\n
     \t    🔐  KEYTYPE         ::      ${keytype}\n\n
@@ -177,20 +190,20 @@ local confirm_user_input=$(cat <<-EOF
     \t    ⚙   KEYGEN OPTIONS  ::      ${opts}
 EOF
     )   
-# Check if user just wants to see status
+# Check if user_alias just wants to see status
 [ ! ${proceed} ] || [ ! ${quiet} ] && echo -e ${confirm_user_input}
 [ ! ${quiet} ] && [ -z ${proceed} ] && read -p "Setup New Handshake? [Y/N]  :: " proceed
 [ ! ${quiet} ] && echo -e "\n"
 }
 # Define Function
-## This function checks for existence of hidden ssh directory in user home and generates a
+## This function checks for existence of hidden ssh directory in user_alias home and generates a
 ## public/private key pair and adds the public key to the authorized keys file.
 function stdssh_genaddkeys(){
     # Check if ssh home dir exists and generate keys
-	[ ! -d ${ssh_home} ] && mkdir -p ${ssh_home} && 'ssh-keygen' ${opts}
-    echo -e "\n ** Adding public key to authorized keys and setting permissions\n"
-	cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
-	chmod 600 ${ssh_home}/authorized_keys
+	[ ! -d ${ssh_home} ] && mkdir -p ${ssh_home} && ssh-keygen ${opts}
+    #echo -e "\n ** Adding public key to authorized keys and setting permissions\n"
+	#cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
+	[ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys && chmod 600 ${ssh_home}/authorized_keys && chmod 600 ${ssh_home}/${privkey}
 }
 # Define Function
 ## This function takes a remote host, username, and path to a private key and copies it
@@ -200,9 +213,10 @@ function stdssh_cpkey(){
 	local username=${2}
 	local privkey=${3}
 	local rseed=${RANDOM}
-    echo -e "\n  🖥   📡  🤙  🎛  👍  Securely Transmitting Secret Handshake \n"
-	scp ${ssh_home}/${privkey} ${username}@${host}:/tmp/${privkey}.transfer${rseed}
-	ssh ${username}@${host} "mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
+    echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
+    cat ${ssh_home}/${pubkey} | ssh ${username}'@'${host} '[ ! -d .ssh ] && mkdir .ssh && cat >> .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'
+	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
+	#ssh ${username}'@'${host} "mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
 }
 # Define Function
 ## Setup and add private key to agent
@@ -225,9 +239,10 @@ function stdssh_reset(){
             echo -e "\n\n 🔥🗑  Removing All Local Keys, Authorized Hosts & ssh-agent Settings"
             rm -vr ${ssh_home}
             rm -v ${sshagentfile}
-            rm -v /Users/$locuname/.bash_logout
+            rm -v /Users/${user}/.bash_logout
+            rm -v /Users/${user}/.bash_login
             #echo -e "\n\n 📡 ⚡️ ⚡️  Removing All Remote Keys, Authorized Hosts & ssh-agent Settings"
-            #ssh ${remuname}@${remhost} "rm -rv ~/.keys;"
+            #ssh ${user_alias}@${host} "rm -rv ~/.keys;"
         fi
     fi
 }
@@ -241,14 +256,14 @@ function stdssh_run(){
     stdssh_reset
     ## Confirm input arguments
     confirm_input
-    ## Run Only if User Says Yes 
-    [ "$proceed" = 'Y' ] || [ "proceed" = 'y' ] && stdssh_genaddkeys && stdssh_cpkey $host $username $privkey && stdssh_addagent $privkey
-    ## Run Without User Check if Quiet Option is Presented
+    ## Run Only if user_alias Says Yes 
+    [ "${proceed}" = 'Y' ] || [ "${proceed}" = 'y' ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${username} ${privkey} #&& stdssh_addagent ${privkey}
+    ## Run Without user_alias Check if Quiet Option is Presented
     #[ $quiet ] && stdssh_genaddkeys && stdssh_cpkey $host $username $privkey && stdssh_addagent $privkey && stdssh_cleanup
 }
 
 function stdssh(){
-    stdssh_run $remhost $remuname $privkey
+    stdssh_run $host $user_alias $privkey
 }
 
 # Run STDSSH
