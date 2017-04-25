@@ -19,7 +19,6 @@ resetkeys=''
 handshake=''
 bits=''
 
-rseed=0 # used for creating random key name for remote (security measure)
 # Define Function
 ## Print Usage Information
 function show_help(){
@@ -232,11 +231,18 @@ function stdssh_cpkey(){
 ## Setup and add private key to agent
 function stdssh_addagent(){
 	local privkey=${1}
-	ssh-agent > ${sshagentfile}
+    ssh-agent > ${sshagentfile}
 	source ${sshagentfile}
-	ssh-add ${ssh_home}/${privkey}
-    [ ! -e "~/.bash_logout" ] && echo -e "\n## quit ssh-agent at logout\n kill ${SSH_AGENT_PID}\n\n" > ~/.bash_logout 
-    [ -e "~/.bash_logout" ] && echo -e "\n## quit ssh-agent at logout\n kill ${SSH_AGENT_PID}\n\n" >> ~/.bash_logout     
+    eval "$(ssh-agent -s)"
+    # Mac OS X specific params
+    if [ "${uname}" = 'Darwin' ]; then
+        if [[ "$(uname -r)" = '16.5.'* ]; then
+            echo -e "Host *\n  AddKeysToAgent yes\n  UseKeychain yes\n  IdentityFile ${privkey}\n" >> ${ssh_home}/config
+        fi
+    fi
+	ssh-add -K ${ssh_home}/${privkey}
+    #[ ! -e "~/.bash_logout" ] && echo -e "\n## quit ssh-agent at logout\n kill ${SSH_AGENT_PID}\n\n" > ~/.bash_logout 
+    #[ -e "~/.bash_logout" ] && echo -e "\n## quit ssh-agent at logout\n kill ${SSH_AGENT_PID}\n\n" >> ~/.bash_logout     
 }
 # Define Function
 ## Reset
@@ -285,5 +291,5 @@ function stdssh(){
 #####################################
 ### Shady El Damaty ; 24 April 2017
 ###
-### stdssh
+### stdssh / setup-sshkeys
 #####################################
