@@ -248,8 +248,8 @@ function stdssh_addagent(){
     # Add private key
     echo 'ssh-add -K '${ssh_home}/${privkey}
     # Start SSH-AGENT at log in and log out
-    echo -e "\n## start ssh agent at login\n ssh-agent > ${HOME}/${sshagentfile} && source ${HOME}/${sshagentfile}; ssh-add ${privkey}\n\n" >> ${HOME}/.bash_login 
-    echo -e "\n## quit ssh-agent at logout\nkill ${SSH_AGENT_PID}\n\n" >> ${HOME}/.bash_logout 
+    echo -e "\n## start ssh agent at login\nssh-agent > ${sshagentfile} && source ${sshagentfile}\nssh-add ${ssh_home}/${privkey}\n\n" >> ${HOME}/.bash_login 
+    echo -e '\n## quit ssh-agent at logout\nkill ${SSH_AGENT_PID}\n\n' >> ${HOME}/.bash_logout 
 }
 # Define Function
 ## Reset
