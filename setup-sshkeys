@@ -243,9 +243,11 @@ function stdssh_addkeychain(){
                 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
             fi
             brew install keychain
+        elif [ $(uname) = 'Linux' ]; then
+            yum install keychain
         fi
     fi
-    echo -e '\n\n## start keychain\neval `keychain --agents ssh --eval '${privkey}'`\n\n' >>
+    echo -e '\n\n## start keychain\neval `keychain --agents ssh --eval '${privkey}'`\n\n' >> ${HOME}/.bash_profile
 }
 # Define Function
 ## Setup and add private key to agent
