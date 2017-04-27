@@ -16,8 +16,12 @@ x11=''
 proceed=''
 quiet=''
 resetkeys=''
-handshake=''
 bits=''
+
+exec_all='true'
+cpkeys=''
+genkeys=''
+addagent=''
 
 # Define Function
 ## Print Usage Information
@@ -46,12 +50,15 @@ This program checks for existence of private/public keypairs for passwordless ss
 
     OTHER FLAGS
 
-        --status        print parameters for ssh setup and exit
-        --quiet         run with minimal user_alias input
-        --reset         delete sshdir and associated keys (CAUTION :: all host keys are deleted)        
-        
-        --2waytunnel    create public/private keys on both hosts (bilateral keyless login)  
-        
+        --status        print parameters for ssh setup and exit (use this to double check args before executing)
+        --quiet         run as quietly as possible (no status print)
+        --reset         CAUTION :: deletes priv/pub keys, ssh-agent files, ssh config and .bash_logout
+        --keychain      download and use keychain instead of ssh-agent (brew | git for OSX/Linux)     
+
+        The following flags can be used in combination with each other to run individual steps ::
+        --keygen        this flag used alone will just generate keys (no cp keys or adding agents)
+        --cpkeys        this flag used alone will just copy keys (no keygen or adding agents)
+        --addagent      this flag used alone will just add an ssh-agent (no keygen or cpkeys)
 
 
 EOF
@@ -79,14 +86,23 @@ while :; do
         --status)
             proceed='N'
         ;;
-        --2waytunnel)
-            handshake='2-way'        
-        ;;
         --keychain)
             keychain='on'        
         ;;        
         --reset)
             resetkeys='true'
+        ;;
+        --cpkeys)
+            cpkeys='true'
+            exec_all=''
+        ;;
+        --genkeys)
+            genkeys='true'
+            execall=''
+        ;;
+        --addagent)
+            addagent='true'
+            execall=''
         ;;
         -host)
             if [ -n "${2}" ]; then
@@ -210,12 +226,13 @@ function stdssh_genaddkeys(){
     ssh-keygen ${opts}
     # Create authorized keys file
     [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys
-    echo -e "\n ** Adding public key to authorized keys and setting permissions\n"
+    echo -e "\n ** Adding public key to authorized keys\n"
 	cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
 }
 # Define Function
 ## Check permissions
 function stdssh_perms(){
+    echo -e "\n ** Setting Permissions To Private Key and Authorized Keys File to 600\n"
     chmod 600 ${ssh_home}/authorized_keys
     chmod 600 ${ssh_home}/${privkey}
 }
@@ -236,6 +253,7 @@ function stdssh_cpkey(){
 	ssh ${username}'@'${host} "[ ! -e  ~/.keys ] && mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
 }
 # Define Function
+## Use keychain utility to add keys to ssh-agent (Very convenient)
 function stdssh_addkeychain(){
     if [ -z $(which keychain) ]; then
         if [ $(uname) = 'Darwin' ]; then
@@ -244,7 +262,8 @@ function stdssh_addkeychain(){
             fi
             brew install keychain
         elif [ $(uname) = 'Linux' ]; then
-            yum install keychain
+            git clone https://github.com/funtoo/keychain.git ${HOME}/keychain
+            echo '\n\n## add keychain to path\nexport PATH="${HOME}/keychain:${PATH}"'
         fi
     fi
     echo -e '\n\n## start keychain\neval `keychain --agents ssh --eval '${privkey}'`\n\n' >> ${HOME}/.bash_profile
@@ -299,22 +318,20 @@ function stdssh_run(){
     stdssh_reset
     ## Run only if User confirms input arguments 
     confirm_input
-    ## Generate Keys
-    stdssh_genaddkeys
-    ## Copy Keys to Host
-    stdssh_cpkey ${host} ${username} ${privkey}
-    ## Add Agent to Read Passphrase
-    stdssh_addagent ${privkey}
+    ## Check for Generate Keys Flag
+    [ ! -z ${genkeys} ] && stdssh_genaddkeys
+    ## Check for Copy Keys Flag
+    [ ! -z ${cpkeys} ] && stdssh_cpkey ${host} ${username} ${privkey}
+    ## Check for Add SSH Agent Flag
+    [ ! -z ${addagent} ] && stdssh_addagent ${privkey}
+    ## Run Entire Pipeline (Default)
+    [ ! -z ${exec_all} ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${username} ${privkey} && stdssh_addagent ${privkey}
     ## Set Appropriate Permissions
     stdssh_perms
 }
 
-function stdssh(){
-    stdssh_run $host $user_alias $privkey
-}
-
 # Run STDSSH
-'stdssh'
+stdssh_run $host $user_alias $privkey
 
 #####################################
 ### Shady El Damaty ; 24 April 2017
