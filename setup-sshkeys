@@ -44,8 +44,8 @@ This program checks for existence of private/public keypairs for passwordless ss
         -keytype    rsa | dsa
         -bits       number of bits to encode key (rsa - 2048, dsa - 1024)
         -sshdir     path to .ssh directory (keys stored here)
-        -prvkey     path to private key
-        -pubkey     path to public key
+        -prvkey     name of private key
+        -pubkey     name of public key
         --x11       permit X11 forwarding 
 
     OTHER FLAGS
@@ -187,8 +187,8 @@ while :; do
 done
 # ----------------------------------------------------------------
 #                  Build Private and Public Key Names
-privkey='id_'${keytype}
-pubkey='id_'${keytype}'.pub'
+[ -z ${privkey} ] && privkey='id_'${keytype}
+[ -z ${pubkey} ] && pubkey='id_'${keytype}'.pub'
 #                 Assign Option String for SSH-KEYGEN
 opts="-t ${keytype} ${bits} ${x11} -f ${ssh_home}/${privkey}"
 # ----------------------------------------------------------------
@@ -241,16 +241,16 @@ function stdssh_perms(){
 ## to the home directory on the remote host. 
 function stdssh_cpkey(){
 	local host=${1}
-	local username=${2}
-	local privkey=${3}
+	local user=${2}
+	local key=${3}
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
     echo -e "Appending $client pubkey to authorized keys on $host"
-    cat ${ssh_home}'/'${pubkey} | ssh ${username}'@'${host} '[ ! -d ~/.ssh ] && mkdir ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
-    echo -e "Sending $client private key to $host"
-	scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
-    echo -e "Setting up $client private key on $host"
-	ssh ${username}'@'${host} "[ ! -e  ~/.keys ] && mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
+    cat ${ssh_home}'/'${key} | ssh ${user}'@'${host} '[ ! -d ~/.ssh ] && mkdir ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+    #echo -e "Sending $client private key to $host"
+	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
+    #echo -e "Setting up $client private key on $host"
+	#ssh ${username}'@'${host} "[ ! -e  ~/.keys ] && mkdir ~/.keys; mv /tmp/${privkey}.transfer.${rseed} ~/.keys/; chmod 400 ~/.keys/${privkey}.transfer.${rseed}"
 }
 # Define Function
 ## Use keychain utility to add keys to ssh-agent (Very convenient)
@@ -312,8 +312,8 @@ function stdssh_reset(){
 ## Run STDSSH for a 1-way handshake
 function stdssh_run(){
     local host=${1}
-    local username=${2}
-    local privkey=${3}
+    local user=${2}
+    local key=${3}
     # Check for Reset
     stdssh_reset
     ## Run only if User confirms input arguments 
@@ -321,11 +321,11 @@ function stdssh_run(){
     ## Check for Generate Keys Flag
     [ ! -z ${genkeys} ] && stdssh_genaddkeys
     ## Check for Copy Keys Flag
-    [ ! -z ${cpkeys} ] && stdssh_cpkey ${host} ${username} ${privkey}
+    [ ! -z ${cpkeys} ] && stdssh_cpkey ${host} ${user} ${key}
     ## Check for Add SSH Agent Flag
-    [ ! -z ${addagent} ] && stdssh_addagent ${privkey}
+    [ ! -z ${addagent} ] && stdssh_addagent ${key}
     ## Run Entire Pipeline (Default)
-    [ ! -z ${exec_all} ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${username} ${privkey} && stdssh_addagent ${privkey}
+    [ ! -z ${exec_all} ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${user} ${key} && stdssh_addagent ${key}
     ## Set Appropriate Permissions
     stdssh_perms
 }
