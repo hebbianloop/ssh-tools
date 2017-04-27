@@ -322,7 +322,8 @@ function stdssh_reset(){
 function stdssh_run(){
     local host=${1}
     local user=${2}
-    local key=${3}
+    local publickey=${3}
+    local privatekey=${4}
     # Check for Reset
     stdssh_reset
     ## Run only if User confirms input arguments 
@@ -340,7 +341,7 @@ function stdssh_run(){
 }
 
 # Run STDSSH
-stdssh_run $host $user_alias $privkey
+stdssh_run $host $user_alias $publickey $privkey
 
 #####################################
 ### Shady El Damaty ; 24 April 2017
