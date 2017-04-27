@@ -29,9 +29,17 @@ function show_help(){
 cat <<EOF
 
 Usage ${0##*/} [-h|--help] [-host ADDRESS] [-uname USERNAME] [-sshagent FILE][-sshdir PATH] [-prvkey FILE]
-                    [--x11] [--reset] [--2waytunnel]
+                    [--x11] [--reset] [--quiet] [--status] [--keychain] [--keygen] [--cpkeys] [--addagent]
 
-This program checks for existence of private/public keypairs for passwordless ssh logins between remote and local host.
+This program creates private/public keypairs for passwordless ssh logins between remote and local host. Private
+keys are added to an ssh-agent to allow storage for passphrases and more secure client<->server relationship. Use
+the keychain argument to download and setup the keychain utility for managing passphrases via a single ssh-agent.
+
+The default behavior of this program is to create a dsa key pair and copy the public key to the authorized keys file
+on the host. Once copied, ssh-agent is configured. All permissions of relevant files are set to 600.
+
+You can use the --status argument if you want to preview your command. (Useful for debugging)
+
 
     REQUIRED ARGUMENTS  
     
@@ -56,6 +64,7 @@ This program checks for existence of private/public keypairs for passwordless ss
         --keychain      download and use keychain instead of ssh-agent (brew | git for OSX/Linux)     
 
         The following flags can be used in combination with each other to run individual steps ::
+
         --keygen        this flag used alone will just generate keys (no cp keys or adding agents)
         --cpkeys        this flag used alone will just copy keys (no keygen or adding agents)
         --addagent      this flag used alone will just add an ssh-agent (no keygen or cpkeys)
