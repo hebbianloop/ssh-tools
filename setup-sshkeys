@@ -28,8 +28,8 @@ addagent=''
 function show_help(){
 cat <<EOF
 
-Usage ${0##*/} [-h|--help] [-host ADDRESS] [-uname USERNAME] [-sshagent FILE][-sshdir PATH] [-prvkey FILE]
-                    [--x11] [--reset] [--quiet] [--status] [--keychain] [--keygen] [--cpkeys] [--addagent]
+Usage ${0##*/} [-h|--help] [-host ADDRESS] [-uname USERNAME] [-sshagent FILE][-sshdir PATH] [-prvkey FILE] [-bits NUM] [-keytype STR]
+                    [--x11] [--reset] [--quiet] [--status] [--keychain] [--keygen] [--cpkeys] [--addagent] [--rsa] [--dsa]
 
 This program creates private/public keypairs for passwordless ssh logins between remote and local host. Private
 keys are added to an ssh-agent to allow storage for passphrases and more secure client<->server relationship. Use
@@ -61,7 +61,7 @@ You can use the --status argument if you want to preview your command. (Useful f
         --status        print parameters for ssh setup and exit (use this to double check args before executing)
         --quiet         run as quietly as possible (no status print)
         --reset         CAUTION :: deletes priv/pub keys, ssh-agent files, ssh config and .bash_logout
-        --keychain      download and use keychain instead of ssh-agent (brew | git for OSX/Linux)     
+        --keychain      download and use keychain instead of ssh-agent (brew | git for OSX | Linux)     
 
         The following flags can be used in combination with each other to run individual steps ::
 
@@ -80,10 +80,10 @@ while :; do
         show_help
         exit
         ;;
-        -rsa)
+        --rsa)
             keytype='rsa'
         ;;
-        -dsa)
+        --dsa)
             keytype='dsa'
         ;;        
         --x11)
@@ -127,7 +127,7 @@ while :; do
                 user_alias=${2}
                 shift
             else
-                echo "ERROR: -uname requires a non-empty option argument.\n" >&2
+                echo "ERROR: -u --uname requires a non-empty option argument.\n" >&2
                 exit
             fi
             ;;
@@ -275,7 +275,7 @@ function stdssh_addkeychain(){
             echo '\n\n## add keychain to path\nexport PATH="${HOME}/keychain:${PATH}"'
         fi
     fi
-    echo -e '\n\n## start keychain\neval `keychain --agents ssh --eval '${privkey}'`\n\n' >> ${HOME}/.bash_profile
+    echo -e '\n\n## alias to start keychain\nalias start_keychain='eval `keychain --agents ssh --eval '${privkey}'`'\n\n' >> ${HOME}/.bash_profile
 }
 # Define Function
 ## Setup and add private key to agent
