@@ -1,0 +1,167 @@
+#!/bin/bash
+
+# Defualt Arguments
+hname=$(hostname)
+mach=$(machine)
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+cd $usrpth
+
+projpath="/Volumes"        # path to local mount point
+mountpoint="CFMI"          # name of local mount point
+servpath="/"               # remote directory of interest
+host="10.1.3.71"           # storage 001 ip address
+resetflag=0
+cv=0
+show_help() {
+cat<<EOF
+
+Usage: ${0##*/} [-h|--help] [-p|--mountpath] [-s|--serverpath] [-hn|--hostname] [-cv|--checkVPN] [--reset]
+
+This is a wrapper for auto-connect: a method for employing the SSHFS service to maintain a connection with a remote file system.
+
+Inputs ::
+
+-p   | --mountpath     -- default :: $projpath         * where should server folders be placed?
+-m   | --mountpoint    -- default :: $mountpoint       * what should server mount be named?
+-s   | --serverpath    -- default :: $servpath         * what server folders should be mounted?
+-hn  | --hostname      -- default :: $host             * what is the address of the server?
+-cv  | --checkVPN      -- default :: $cv               * use CISCO anyconnect?
+--reset                -- default :: $resetflag        * reset account information?
+
+see auto-connect -h for more information
+
+EOF
+    }
+# --------------------------------------------------------------------------------------------
+# Parse Options
+while :; do
+    case $1 in
+        -h|--help)
+        show_help
+        exit
+        ;;
+        -p|--mountpath)
+            if [ -n "$2" ]; then
+                projpath=$2
+                shift
+            else
+                echo "ERROR: -p --mountpath requires a non empty option argument.\n" >&2
+                exit
+            fi
+            ;;        
+        -m|--mountpoint)
+            if [ -n "$2" ]; then
+                mountpoint=$2
+                shift
+            else
+                echo "ERROR: -m --mountpoint requires a non empty option argument.\n" >&2
+                exit
+            fi
+            ;;
+        -s|--serverpath)
+            if [ -n "$2" ]; then
+                servpath=$2
+                shift
+            else
+                echo "ERROR: -s --serverpath requires a non empty option argument.\n" >&2
+                exit
+            fi
+            ;;
+        -hn|--hostname)
+            if [ -n "$2" ]; then
+                host=$2
+                shift
+            else
+                echo "ERROR: -h --hostname requires a non empty option argument.\n" >&2
+                exit
+            fi
+            ;;
+	    -cv|--checkVPN)
+	       if [ -n "$2" ]; then
+                cv=$2
+                shift
+	       else
+                echo "ERROR: -cv --checkVPN requires a non-empty option argument.\n" >&2
+                exit
+            fi
+            ;;
+        --reset)
+            resetflag=1
+            ;;              
+        -?*)
+            printf 'Warn: Unknown option (ignored): %s\n' "%1" >&2
+            ;;
+        *)
+            break
+    esac
+
+    shift
+done
+echo '________________________________________________________________'
+echo '                   MOUNTING REMOTE FILESYSTEM                   '
+echo -e "\nMount Point  :: $projpath/$mountpoint "
+echo -e "\nServer Path  :: $servpath\n "
+echo -e "Host Name    :: $host\n"
+echo -e "(Auto Connect Running In Background)\n"
+echo '________________________________________________________________'
+
+# ------------------------------------------------------------------------
+# Check for Usernames & Passwords File
+# ------------------------------------------------------------------------
+logindir="$usrpth/.autosshfs"   # Path to log in information
+accntinfo="$logindir/$mountpoint-connect"
+# filename for local storage of account information
+if [ ! -d $logindir  ]; then
+    echo -e "\nSetting up for secure automated log-ins\n"
+    sudo mkdir -m 744 $logindir
+    sudo chown $me $logindir
+    #sudo chmod -R 744 $logindir
+fi
+if [ $resetflag = "1" ]; then
+    echo "\n* Cleaning up Account Information\n-----------------------------------"
+    if [ -f $accountinfo ]; then
+        rm $accntinfo
+    fi
+    if [ -f "$logindir/vpn-connect" ]; then
+        rm "$logindir/.vpn-connect"
+    fi
+fi
+#
+# First Check for VPN information
+if [ $cv = "1" ]; then
+        if [ ! -f "$logindir/vpn-connect" ]; then
+            touch "$logindir/vpn-connect"
+            echo -e "VPN Gtown NetID Login Required!\n-----------------------------------"
+            echo -e "** Please enter your NetID"
+            read username
+            echo $username > "$logindir/vpn-connect"
+            echo -e "** Please enter your password"
+            read -s password
+            echo $password | base64 >> "$logindir/vpn-connect"      
+        fi    
+fi
+# Now Check for Remote Server Information
+if [ ! -f $accntinfo ]; then
+    touch $accntinfo
+    echo -e "Account Information Required!\n-----------------------------------"
+    echo -e "** Please enter your remote server username"
+    read username
+    echo $username > $accntinfo
+    echo -e "** Please enter your remote server password"
+    read -s password
+    echo $password | base64 >> $accntinfo
+fi
+# ------------------------------------------------------------------------
+# Now auto-connect and print output to null
+# ------------------------------------------------------------------------
+if [ $cv = "0" ]; then
+    nohup auto-connect -n $mountpoint -lp $projpath -sp $servpath -hn $host > /dev/null 2>&1 &
+    #auto-connect -n $mountpoint -lp $projpath -sp $servpath -hn $host
+elif [ $cv = "1" ]; then
+    nohup  auto-connect -n $mountpoint -lp $projpath -sp $servpath -hn $host -cv > /dev/null 2>&1 &
+fi
+
+

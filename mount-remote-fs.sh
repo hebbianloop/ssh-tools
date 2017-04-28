@@ -112,19 +112,29 @@ function mountremotefs_checksshkeys(){
 	if [ ! -z $currentkey ]; then
 		echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login ($currentkey)"
 	else
-		echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
-		read proceed
-		if [ "{$proceed" = 'Y' ] || [ "{$proceed" = 'y' ]
-			echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
-			setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
+		if [ -z $(type start_keychain) ]; then
+			echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
+			read proceed
+			if [ "{$proceed" = 'Y' ] || [ "{$proceed" = 'y' ]
+				echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
+				setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
+			else
+				echo -e "\nssh keys are required for automatic remote log in.. exiting.."
+				exit
+			fi
 		else
-			echo -e "\nssh keys are required for automatic remote log in.. exiting.."
-			exit
+			start_keychain
 		fi
 	fi
 }
 # Define Function 
 ##
-function mountremotefs_run(){
+function mountremotefs_sshfs(){
 sshfs ${user}@${host}:$mount_this $mount_here -C -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks,password_stdin	
 }
+
+function mountremotefs_run(){
+	mountremotefs_prepargs && mountremotefs_checkvpn && mountremotefs_checksshkeys && mountremotefs_sshfs
+}
+
+mount

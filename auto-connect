@@ -1,0 +1,286 @@
+#!/bin/bash
+# - Check if connected to VPN
+# - Check if server exists
+# - Prompt user for username & password if not already stored as encrypted file
+# - Store password in encrypted file
+# - Use SSHFS to connect to server
+# - Loops indefinitely until user says stop
+# --------------------------------------------------------------------------------------------
+# First check if required softare is installed
+if [ ! -f /usr/local/bin/sshfs ]; then
+	echo -e "!! ERROR: SSHFS IS NOT INSTALLED! \n see --help option"
+	exit 
+fi
+# Default Arguments
+# ------------------------
+comebackhere=$(pwd)
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+cd $comebackhere
+d=$(date)
+
+hostname="141.161.208.9"		  # public address to node020 - can only access on gtown net
+checkVPN=0				          # check if VPN connection is established
+resetflag=0                       # reset account information 
+localpath="/Volumes"              # local path to mount remote volume in
+servername="CFMI"			      # name of local mount point
+serverpath="/"	                  # remote directory of interest
+# --------------------------------------------------------------------------------------------
+# Help Function
+show_help() {
+cat <<EOF
+
+Usage: ${0##*/} [-h|--help] [-cv|--checkVPN] [-n|--servername NAME] [-lp|--localpath PATH] [-sp|--serverpath PATH] [-h|--host ADDRESS] ...
+
+Employs the SSHFS service to automatically mount a remote server on a local directory path.
+Intended to be run in crontab to ensure connection is never dropped. 
+
+	Options ::
+
+	-h  --help 		displays help
+	-cv --checkVPN		checks whether connected to Georgetown VPN network
+	-n  --servername	custom name of the local mount point
+	-lp --localpath 	local path to mounted directory
+	-sp --serverpath	directory on remote server to be locally mounted
+	-h  --hostname 		ip or DNS address
+	--stop 			stops autoconnect process and unmounts server 
+	--reset 		resets account information and connection
+
+	Example :: 
+
+		Check for VPN connection, create a mount point called CFMI under /Volumes and have it point to
+		the directory /processed/data/ADS on the remote host 141.161.208.9. Command is run in background
+                using &.  All output is trashed (> /dev/null).
+
+		     ${0##*/} --checkVPN -n CFMI -lp /Volumes -sp /processed/data/ADS --hostname 141.161.208.9 > /dev/null &
+
+		If you already have a cfmi-connect process running, you can call again with the --stop flag to stop running
+
+		     ${##*/} -n CFMI --stop
+
+		To clean all saved account information (in the event your passwords change)
+
+                     ${##*/} -n CFMI --reset
+
+	Default behavior ::
+
+		The script does not check for VPN access, automatically connects to node020 and mounts the remote
+		directory /processed/data/ADS under the local mount point /Volumes/CFMI.
+
+	IMPORTANT!  
+
+		* SSHFS MUST BE INSTALLED FOR THIS SCRIPT TO WORK (also install FUSE for good measure)
+			Download here: https://osxfuse.github.io
+		
+		* CISCO ANYCONNECT MUST BE INSTALLED TO USE GTOWN VPN!
+			Download here: https://uis.georgetown.edu/internet-access
+
+               * report bugs to se394@georgetown.edu
+
+EOF
+}
+# --------------------------------------------------------------------------------------------
+# Parse options
+while :; do
+	case $1 in
+		-h|--help)
+		show_help
+		exit 
+		;;
+		-cv|--checkVPN)
+		checkVPN=1
+		;;
+		-n|--servername)
+			if [ -n "$2" ]; then
+				servername=$2
+				shift
+			else
+				echo "ERROR:  -n --servername requires a non-empty option argument.\n" >&2
+				exit 
+			fi
+			;;
+		-lp|--localpath)
+			if [ -n "$2" ]; then
+				localpath=$2
+				shift
+			else
+				echo "ERROR:  -lp --localpath requires a non-empty option argument.\n" >&2
+				exit 
+			fi
+			;;
+		-sp|--serverpath)
+			if [ -n "$2" ]; then
+				serverpath=$2
+				shift
+			else
+				echo "ERROR:  -sp --serverpath requires a non-empty option argument.\n" >&2
+				exit 
+			fi
+			;;				
+		-hn|--hostname)
+			if [ -n "$2" ]; then
+				hostname=$2
+				shift
+			else
+				echo "ERROR:  -h --hostname requires a non-empty option argument.\n" >&2
+				exit 
+			fi
+			;;
+		--stop)
+			touch $usrpth/.stop-autoconnect-$servername
+			sleep 2
+			rm $usrpth/.stop-autoconnect-$servername
+			umount -f "$localpath/$servername"
+			#TODO have a switch here based on output from umount
+                        diskutil umount force "$localpath/$servername"
+#			if [ -d $localpath/$servername ]; then
+#				rm -rf $localpath/$servername
+#			fi
+			exit 
+			;;
+		--reset)
+			echo "Removing Account Information"
+			rm $usrpth/.gtown-connect
+			resetflag=1
+			;;			
+		-?*)
+			printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+			;;
+		*)
+			break
+	esac
+
+	shift
+done
+# Set local path to server now in case options were provided
+localpath="$localpath/$servername"
+# Path to log in information
+logindir="$usrpth/.autosshfs"
+# filename for local storage of account information
+if [ ! -d $logindir  ]; then
+    echo "Setting up for automated log-ins"
+    sudo mkdir -m 744 $logindir
+    sudo chown $me $logindir
+    #sudo chmod -R 744 $logindir
+fi
+accntinfo="$logindir/$servername-connect"		
+if [ $resetflag = "1" ]; then
+        echo "* Cleaning up Account Information"
+	rm $accntinfo
+	if [ -d $localpath ]; then
+		echo "* Reseting Connection"
+		umount -f $localpath
+		diskutil umount force $localpath
+	fi
+fi
+# --------------------------------------------------------------------------------------------
+# Check connections until stop signal is detected
+while [ ! -f $usrpth/.stop-autoconnect-$servername ]; do
+printf "...\n"
+	if [ $checkVPN = "1" ]; then
+		printf "\r\n\n Checking Connection to Gtown Net - $me - $d\n\n "	
+		if [ ! -f /opt/cisco/anyconnect/bin/vpn ]; then
+			printf "\r!! ERROR: CISCO ANY CONNECT IS NOT INSTALLED!\n see --help option for download link"
+			exit 
+		fi
+		if [ ! -f "$logindir/vpn-connect" ]; then
+			touch "$logindir/vpn-connect"
+			echo -e "VPN Gtown NetID Login Required!\n-----------------------------------"
+			echo -e "** Please enter your NetID"
+			read username
+			echo $username > "$logindir/vpn-connect"
+			echo -e "** Please enter your password"
+			read -s password
+			echo $password | base64 >> "$logindir/vpn-connect"		
+		else
+			printf "\rReading Gtown NetID Login Info\n---------------------------------------"
+			username=$(sed -n 1p "$logindir/vpn-connect")
+			password=$(sed -n 2p "$logindir/vpn-connect" | base64 --decode)
+		fi
+		/usr/bin/expect <<EOD
+
+		spawn /opt/cisco/anyconnect/bin/vpn connect guvpn.georgetown.edu
+
+		expect "Group: " {send "0\r" }
+		expect "Username: " { send "$username\r" }
+		expect "Password: " { send "$password\r" }
+
+		set timeout 60
+		expect "VPN>"
+EOD
+printf "\r"
+clear
+	fi
+	# --------------------------------------------------------------------------------------------
+        # this would be so much easier if keyless login worked
+        echo -e "\n\nChecking SSHFS Connection - $me - $d\n\n"
+	if [ ! -d $localpath ];then
+	    dircont=''
+	else
+            dircont=$(ls -A $localpath)	    
+	fi
+	if [ ! $dircont ]; then
+		echo -e "Connection not detected!"
+		if [ ! -f $accntinfo ]; then
+			touch $accntinfo
+			echo -e "Account Information Required!\n-----------------------------------"
+			echo -e "** Please enter your remote server username"
+			read username
+			echo $username > $accntinfo
+			echo -e "** Please enter your remote server password"
+			read -s password
+			echo $password | base64 >> $accntinfo
+		else
+			echo -e "Reading Saved Account Information File\n---------------------------------------"
+			username=$(sed -n 1p $accntinfo)
+			password=$(sed -n 2p $accntinfo | base64 --decode)
+		fi
+		if [ ! -d $localpath ]; then
+		    printf "\rMounting ..."
+		    mkdir -m 744 $localpath
+		fi
+		printf "\r Connecting via SSHFS to $username@$hostname:$serverpath \n * Local Mount: $localserverpath"
+		/usr/bin/expect <<EOD
+		set timeout -1
+		spawn -ignore HUP sshfs $username@$hostname:$serverpath $localpath -C -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks
+		expect {
+	    	"$username@$hostname's password: " {
+		        send "$password\n"
+	        	expect {
+		            "\n" { }
+	        	}
+	    	}
+	    	"(yes/no)? " {
+		        send "yes\n"
+	        	expect {
+		            "password: " {
+	                	send "$password\n"
+	                	expect {
+		                    "\n" { }
+	                	}
+	            	}
+	            	"\n" { }
+	        	}
+	    	}
+	    	"\n" { }
+	    	default {
+		        send_user "Login failed\n"
+	        	exit
+	    	}
+		}
+EOD
+	else
+		printf "\rViable connection detected :: \n"
+		printf "$(netstat -rn | sed -n 4p)"
+		printf "$(netstat -rn | grep default)\n"
+		printf "\r Welcome ^_^\r"
+	fi
+	clear 
+done
+#  auto-connect.sh
+#
+#
+#  Created by Shady El Damaty on 2/1/16.
+#
