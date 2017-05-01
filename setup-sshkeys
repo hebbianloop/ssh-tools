@@ -107,11 +107,11 @@ while :; do
         ;;
         --genkeys)
             genkeys='true'
-            execall=''
+            exec_all=''
         ;;
         --addagent)
             addagent='true'
-            execall=''
+            exec_all=''
         ;;
         -host)
             if [ -n "${2}" ]; then
@@ -255,7 +255,7 @@ function stdssh_cpkey(){
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
     echo -e "Appending $client pubkey to authorized keys on $host"
-    cat ${ssh_home}'/'${key} | ssh ${user}'@'${host} '[ ! -d ~/.ssh ] && mkdir ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+    cat ${ssh_home}'/'${key} | ssh ${user}'@'${host} 'mkdir ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
     #echo -e "Sending $client private key to $host"
 	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
     #echo -e "Setting up $client private key on $host"
@@ -276,6 +276,7 @@ function stdssh_addkeychain(){
         fi
     fi
     echo -e '\n\n## alias to start keychain\nalias start_keychain='eval `keychain --agents ssh --eval '${privkey}'`'\n\n' >> ${HOME}/.bash_profile
+    source ${HOME}/.bash_profile
 }
 # Define Function
 ## Setup and add private key to agent
@@ -296,6 +297,26 @@ function stdssh_addagent(){
         echo -e '\n## quit ssh-agent at logout\n[ -n "$SSH_AUTH_SOCK" ] && eval `ssh-agent -k`\n\n' >> ${HOME}/.bash_logout 
     else
         stdssh_addkeychain
+        currentkey=$(ssh-add -L | awk '{print $3}')
+        if [ ! -z $currentkey ]; then
+            echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login ($currentkey)"
+        else
+            if [ -z $(type start_keychain) ]; then
+                echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
+                read proceed
+                if [ "{$proceed" = 'Y' ] || [ "{$proceed" = 'y' ]
+                    echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
+                    setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
+                else
+                    echo -e "\nssh keys are required for automatic remote log in.. exiting.."
+                    exit
+                fi
+            else
+                # Add private key
+                ssh-add -K ${ssh_home}/${privkey}                
+                start_keychain
+            fi
+        fi
     fi
 }
 # Define Function
