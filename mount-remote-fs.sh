@@ -1,31 +1,45 @@
 #!/bin/bash
 # Maintain Mounted Volume on SSHFS
-
+##
+# user login & server
 user=''
-host='10.1.3.55'
-hostalias='CFMI'
+host=''
+# server mount info
+hostalias=''
 mount_this='/'
 mount_here='/Volumes'
-vpnservername='guvpn.georgetown.edu'
-
+# vpn
+vpnservername=''
+##
 # Define Function
 ## Help 
 function show_help(){
 
 cat <<EOF
 
-Usage: ${0##*/} [-h|--help] [-u|--uname USER] [-h|--host HOST] [-p|--serverdir PATH] 
-				[-l|--localdir PATH] [-a|--hostalias STRING] [-v|--vpn SERVERNAME]
+Usage: ${0##*/}  -  A wrapper for the Secure Shell File System (sshfs) protocol for maintaining a zombie connection that ressurects upon disconnect.
 
-A wrapper for sshfs to maintain a persistent connection with a remote filesystem. This program will
-mount the directory on HOST (specified by SERVERDIR) into a local directory LOCALDIR/HOSTALIAS.
+     Options :: 
+                [--help]               print usage 
+                [-u|--uname USER]         user name for remote host
+                [-h|--host HOST]          host address / host name
+                [-p|--serverdir PATH]     directory to be accessed on the remote host
+	            [-l|--localdir PATH]      the remote directory will be placed here
+                [-a|--hostalias STRING]   name for the local portal to the remote directory
+                [-v|--vpn SERVERNAME]     enter this option to tunnel via VPN (address required)
+
+     Example ::
+
+      Connect to a server through a vpn tunnel
+               
+                ${00##*/} -u guest -h 192.168.1.11 -p / -l /Volumes/ -a awesomeserver -v securvpn.connected.org
 
 EOF
 } 
-
+##
 while :; do
 	case ${1} in
-		-h|--help)
+		--help)
 		show_help
 		exit
 		;;
@@ -82,7 +96,7 @@ while :; do
 			fi
 		;;									
         -?*)
-            printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
+            printf '\n ‼  ️ Warning: Unknown option: %s\n' "${1}" >&2
             exit
             ;;
         *)
@@ -90,19 +104,18 @@ while :; do
 	esac
 	shift
 done
-
+##
 # Define Function
 ## Assemble input arguments to final formats
-function mountremotefs_prepargs(){
+function mountremotefs_mkdir(){
 	mount_here=${mount_here}/${hostalias}
-	echo -e "\n  🗄  Setting up Local Directory to Host Remote File\n"
+	echo -e "\n  🗄  Setting up Local Directory to Host Remote File: $mount_here\n"
 	mkdir -p $mount_here
 }
-
 # Define Function
 ## Establish Persistent VPN Connection via OpenConnect
-function mountremotefs_checkvpn(){
-	[ ! -z ${vpn} ] && check-vpn -server ${vpnservername}
+function mountremotefs_vpnconnect(){
+	[ ! -z ${vpn} ] && vpn-connect to ${vpnservername}
 }
 # Define Function
 ## Check Existence of SSH Keys, ssh-agent & keychain
