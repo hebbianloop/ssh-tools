@@ -156,6 +156,26 @@ EOF
 [ ! -z ${vpn} ] && [ -z ${vpnservername} ] && echo -e "\n * Enter VPN address to tunnel through (leave empty for no VPN tunneling) ::  " && read vpnservername
 ##
 # Define Function
+## Check that sshfs is installed
+function occultsshfs_dependencies(){
+	if [ -z $(sshfs) ]; then
+		echo -e "\n Installing SSHFS "
+        if [ $(uname) = 'Darwin' ]; then
+            if [ -z $(which brew) ]; then
+                ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+            fi
+            brew install cask fuse
+			brew install sshfs
+        elif [ $(uname) = 'Linux' ]; then
+        	yum install fuse-sshfs
+        	[ -z $(which sshfs) ] && echo "Sorry - Linux not currently supported, see your system admin" && exit
+        else
+        	echo 'Sorry this OS is not supported'
+        	exit
+        fi		
+	fi
+}
+# Define Function
 ## Assemble input arguments to final formats
 function occultsshfs_buildcoffin(){
 	mount_here=${mount_here}/${hostalias}
