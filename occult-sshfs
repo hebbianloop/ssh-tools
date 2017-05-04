@@ -27,7 +27,13 @@ Usage: ${0##*/}  -  A wrapper for the Secure Shell File System (sshfs) protocol 
 		* You can connect to servers hidden behind a firewall if you have VPN credentials for the protected network. A persistent VPN connection will be
 		  setup and established if the user species the --vpn option.  Type `vpn-connect help` for more information.
 
-		* Zombie Signals and Log Files can be found under ~/.ssh/.autosshfs/*.log. Delete the appropriate zombie file in this directory if banish doesn't
+		* Persistent Zombie connections cannot occur if you do not have write access to the remote file system. This program creates a file on the remote
+		  file system that signals when the connection is dropped. If the file can't be created then persistence can't be maintained.
+
+		* ${0##*/} will link the desired remote file system into the home directory prior to sshfs-ing into the user's home directory on the remote host.
+		  The home directory is preferred to maintain consistency in filepaths. Also keeps things clean.
+
+		* Zombie signals and log files can be found under ~/.ssh/.autosshfs/*.log. Delete the appropriate zombie file in this directory if banish doesn't
 		  succesfully disconnect the remote file system.
 
      Options :: 
