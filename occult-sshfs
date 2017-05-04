@@ -334,6 +334,8 @@ function occultsshfs_raisezombie(){
 # Define Function
 ## Assemble current sequence of functions and execute spell
 function occultsshfs_castspell(){
+	# Check that sshfs is installed
+	occultsshfs_dependencies
 	# Banish Zombie & BindingSpell 
 	[ ${banish} ] && occultsshfs_banish
 	# First Check If Remote FileSystem is Writable
