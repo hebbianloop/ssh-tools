@@ -29,13 +29,13 @@ Use this program to establish keyless log in between a client and a host. You ca
 
 For more information see https://wiki.archlinux.org/index.php/SSH_keys
 
-## vpn-connect
+### vpn-connect
 
 This program harnesses the openconnect utility to establish a persistent VPN connection. Use this program to keep your ISP from spying on you without having to constantly check your connection.
 
-## occult-sshfs
+### occult-sshfs
 
 Very silly name but this program allows you to mount a remote file system unto your computer as if it were an external hard drive. This is useful for clicking, dragging and otherwise manipulating files as you would any other file on your system. 
 
-## Acknowledgements
+### Acknowledgements
 Thanks to M Deppe for guidance on best practices for security and encryption.
