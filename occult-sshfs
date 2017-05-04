@@ -1,0 +1,285 @@
+#!/bin/bash
+# Maintain Mounted Volume on SSHFS
+##
+# user login & server
+user=''
+host=''
+# server mount info
+hostalias=''
+mount_this='/'
+mount_here='/Volumes'
+# vpn
+vpnservername=''
+##
+# Define Function
+## Help 
+function show_help(){
+
+cat <<EOF
+
+Usage: ${0##*/}  -  A wrapper for the Secure Shell File System (sshfs) protocol for maintaining a zombie connection that ressurects upon disconnect.
+
+     Options :: 
+                [--help]               print usage 
+                [-u|--uname USER]         user name for remote host
+                [-h|--host HOST]          host address / host name
+                [-p|--serverdir PATH]     directory to be accessed on the remote host
+	            [-l|--localdir PATH]      the remote directory will be placed here
+                [-a|--hostalias STRING]   name for the local portal to the remote directory
+                [-v|--vpn SERVERNAME]     enter this option to tunnel via VPN (address required)
+
+     Example ::
+
+      Connect to a server through a vpn tunnel
+               
+            ${00##*/} -u guest -h 192.168.1.11 -p / -l /Volumes/ -a awesomeserver -v securvpn.connected.org
+
+EOF
+} 
+##
+while :; do
+	case ${1} in
+		'help')
+		show_help
+		exit
+		;;
+		-v|--vpn)
+		vpn='usevpn'
+			if [ -n "${2}" ]; then
+				vpnservername=${2}
+				shift
+			fi		
+		;;
+		banish)
+		banish='banishzombie'
+		;;				
+		-u|--uname)
+			if [ -n "${2}" ]; then
+				user=${2}
+				shift
+			else
+				echo -e "ERROR:  -u --uname requires a non-empty option argument.\n" >&2
+				exit
+			fi
+		;;	
+		-h|--host)
+			if [ -n "${2}" ]; then
+				host=${2}
+				shift
+			else
+				echo -e "ERROR:  -h --host requires a non-empty option argument.\n" >&2
+				exit
+			fi
+		;;
+		-p|--serverdir)
+			if [ -n "${2}" ]; then
+				mount_this=${2}
+				shift
+			else
+				echo -e "ERROR:  -p --serverdir requires a non-empty option argument.\n" >&2
+				exit
+			fi
+		;;
+		-a|--hostalias)
+			if [ -n "${2}" ]; then
+				hostalias=${2}
+				shift
+			else
+				echo -e "ERROR:  -a --hostalias requires a non-empty option argument.\n" >&2
+				exit
+			fi
+		;;
+		-l|--localdir)
+			if [ -n "${2}" ]; then
+				mount_here=${2}
+				shift
+			else
+				echo -e "ERROR:  -a --hostalias requires a non-empty option argument.\n" >&2
+				exit
+			fi
+		;;									
+        -?*)
+            printf '\n ‼  ️ Warning: Unknown option: %s\n' "${1}" >&2
+            exit
+            ;;
+        *)
+            break
+	esac
+	shift
+done
+cat <<EOF
+
+⛓ ⚗  Occult SSHFS Ritual 🏺 ⛓
+EOF
+# Check for input arguments
+[ -z ${host} ] && echo -e "\n * Please Enter Host Address ::  " && read host
+[ -z ${user} ] && echo -e "\n * Please Enter Username @ ${host} ::  " && read user
+[ -z ${hostalias} ] && echo -e "\n * Enter Alias for Remote File System (i.e. something descriptive for what you're mounting) ::  " && read hostalias
+[ -z ${mount_this} ] && echo -e "\n * Enter Remote File System Path You Would Like to Mount as ${hostalias} ::  " && read mount_this
+#[ -z ${vpnservername} ] && echo -e "\n * Enter VPN address to tunnel through (leave empty for no VPN tunneling) ::  " && read vpnservername
+if [ -z ${banish} ]; then
+cat <<EOF
+
+🙌 Behold! A zombie SSHFS connection will be summoned and bound
+
+	${user}@${host}:${mount_this} <------> $(hostname):${mount_here}/${hostalias} ~ ${vpnservername}
+
+EOF
+fi
+##
+# Define Function
+## Assemble input arguments to final formats
+function occultsshfs_buildcoffin(){
+	mount_here=${mount_here}/${hostalias}
+	echo -e "⚰   Setting up Local Coffin for Zombie: $mount_here\n" && [ ! -d ${mount_here} ] && mkdir -p ${mount_here}
+	echo -e "🔮  Chanting Spells for Automatic Ressurection \n" && [ ! -e "${HOME}/.ssh/.autosshfs" ] && mkdir -p ${HOME}/.ssh/.autosshfs
+}
+# Define Function
+## Establish Persistent VPN Connection via OpenConnect
+function occultsshfs_checkvpn(){
+	[ ${vpn} ] && vpn-connect to ${vpnservername}
+}
+# Define Function
+## Check Existence of SSH Keys, ssh-agent & keychain
+function occultsshfs_checksshkeys(){
+	# get location of current key
+	local currentkey=$(ssh-add -L | awk '{print $3}')
+	if [ -e $currentkey ]; then
+		echo -e "🔎 🔑  Found Existing SSH Key ($currentkey)\n"
+	else
+		if [ -z $(type start_keychain) ]; then
+			echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
+			read proceed
+			if [ "{$proceed" = 'Y' ] || [ "{$proceed" = 'y' ]; then
+				echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
+				setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
+			else
+				echo -e "\nssh keys are required for automatic mounting of remote filesystems.. proceeding with mortal file system"
+				nokeys='nokeys'
+			fi
+		else
+			start_keychain
+			read -p "**  Enter Path to Private Key to Enable Automatic Logins (~/.ssh/id_rsa)" private_key
+			if [ -z ${private_key} ]; then
+				local private_key="~/.ssh/id_rsa"
+			else
+				[ ! -e ${private_key} ] && echo -e "\n ❗️❗️  WARNING - ${private_key} not found, sshfs will require password entry for each reconnection.. exiting....\n" && exit
+				[ -e ${private_key} ] && echo "\n\n ** Adding Existing Key to Keychain\n" && ssh-add ${private_key}
+			fi
+		fi
+	fi
+}
+# Define Function
+## Remove Zombification Signal & Anchor 
+function occultsshfs_banish(){
+	echo -e "\n👹💭  Banishing SSHFS Zombie - Unmounting Remote File System, Deleting Zombie Signal  \n"
+	echo -e "\t${user}@${host}:${mount_this} <-- 💥  --> $(hostname):${mount_here}/${hostalias}"
+	if [ -e ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie ]; then
+		rm -v ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
+	else
+		echo -e "\n\tZombie Signal Has Already Been Killed"
+	fi
+	if [ -d $mount_here/${hostalias} ]; then
+		[ -h $mount_here/$(whoami).$(hostname).bindzombie ] && unlink -v $mount_here/$(whoami).$(hostname).bindzombie
+		umount -f ${mount_here}/${hostalias} > /dev/null
+		## Add something here to check if umount failed (be very careful)
+		[ -e ${mount_here}/${hostalias} ] && rm -rv ${mount_here}/${hostalias}
+	fi
+	exit	
+}
+# Define Function
+## Check For Existing Host Alias & Fix Naming Conflicts If Found
+### ** User can specify a host alias that is identical to an existing alias.. either this alias already exists
+###	   (i.e. same origin) OR the user has specified an identical alias name but points to a different origin
+### ** This function avoids multiple aliases in the home directory that all point to the same place.. however a user
+###    can specify an alias with an existing name that points to a different place
+function occultsshfs_checkalias(){
+	## THIS IS PRETTY FUCKED UP - hostalias changes and user doesn't know
+	echo ${1}
+	echo ${hostalias}
+	# Retrieve Alias Origin
+	local identity=$(ssh ${user}@${host} 'echo $(readlink -f '${1}'/'${hostalias}')')
+	echo $identity
+	echo $hostalias
+	# Does the Alias Origin Match What the User Wants To Mount?
+	if [ "${identity}" != "${mount_this}" ]; then
+		keeplooping='startheloop'
+		# If The Alias Origin Doesn't Match then Append Incremented Number to Alias Name (to distinguish)
+		local counter=0
+		# Keep looping until you can find a newhostalias that doesn't exist on the remote server
+		while [ $keeplooping  ]; do
+			local newhostalias=$(printf "${hostalias}_%03d" $counter)
+			keeplooping=$(ssh ${user}@${host} '[ -h '$newhostalias' ] && echo keeplooping!')
+			let counter=counter+1
+		done
+		hostalias=$newhostalias
+	fi
+	# Otherwise leaves things alone if the desired filesystems match between user and alias origin
+}
+function occultsshfs_checkperms(){
+notwritable=$(ssh ${user}@${host} "[ ! -w ${mount_this} ] && echo 'notwritable'")
+if [ ! -z ${notwritable} ]; then
+	echo -e '📁🔒 Remote FileSystem Is Not Writable -- ❗️❗️ FILESYSTEM WILL NOT RESSURRECT UPON LOSS OF CONNECTION!!!'
+fi
+}
+# Define Function
+## Anchor Desired FileSystem to Home Directory on Remote Host
+function occultsshfs_occultritual(){
+	# Build a Coffin for the Zombie (create directory for mounting & binding)
+	occultsshfs_buildcoffin
+	# Establish VPN connection if required
+	occultsshfs_checkvpn
+	# Check for SSH keys
+	occultsshfs_checksshkeys
+	# Check For Naming Conflicts (Don't Overwrite Links!)
+	occultsshfs_checkalias ${1}
+	# Create Binding in Remote Home Directory
+	echo -e "\n⛓  Binding Remote File System to Local Host\n"
+	local binding="${1}/.ssh/.autosshfs/$(whoami).$(hostname).${hostalias}.bindzombie"
+	ssh ${user}@${host} "mkdir -p ${1}/.ssh/.autosshfs; [ ! -e ${binding} ] && touch ${binding}"
+	local secondbinding="${mount_this}/$(whoami).$(hostname).bindzombie"
+	[ -z ${notwritable} ] && ssh ${user}@${host} "[ ! -e ${mount_this}/$(whoami).$(hostname).bindzombie ] && ln -sv ${binding} ${secondbinding}"
+	# Link Remote FileSystem to Remote Home Directory with Anchor Once Host Alias Checks Out
+	echo -e "↔️  Soft-Linking Filesystems on ${user}@${host} :: ${mount_this} <- - - -> ${1}/${hostalias}\n"
+	ssh ${user}@${host} "[ ! -e ${1}/${hostalias} ] && ln -sv ${mount_this} ${1}/${hostalias}"
+}
+# Define Function 
+## Loop indefinitely while Zombie Signal Exists & Check for Anchor
+function occultsshfs_raisezombie(){
+	# Place the zombification signal in the home directory 
+	if [ ${notwritable} ] || [ ${nokeys} ]; then
+		echo '...establishing mortal filesystem connection'
+		#$sshfs ${user}@${host}:${HOSTHOME}/${hostalias} $mount_here -C -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
+	else
+		touch ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
+		# Zombie will stay alive as long as the zombification signal file exists
+		#while [ -e ${HOME}/.ssh/.autosshfs/${hostalias}.zombie ]; do
+		#	if [ ! -e $mount_here/$(whoami).$(hostname).bindzombie ]; then
+		#		echo -e "\n\n ⚰👻  Zombie Binding Spell is Null * * Resurrecting SSHFS Connection * *  $(date)\n\n"
+				#$sshfs ${user}@${host}:${HOSTHOME}/${hostalias} $mount_here -C -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
+				open ${mount_here}
+		#	fi
+		#done
+	fi
+}
+# Define Function
+## Assemble current sequence of functions and execute spell
+function occultsshfs_castspell(){
+	# Banish Zombie & BindingSpell 
+	[ ${banish} ] && occultsshfs_banish
+	# First Check If Remote FileSystem is Writable
+	occultsshfs_checkperms
+	# Get Path to Home Directory for Remote User
+	local HOSTHOME=$(ssh ${user}@${host} 'echo ${HOME}')	
+	# Perform an Occult Ritual To Bind Zombie
+	occultsshfs_occultritual ${HOSTHOME}
+	# Now Raise Zombie
+	occultsshfs_raisezombie ${HOSTHOME}
+}
+
+occultsshfs_castspell
+#####################################
+### Shady El Damaty ; 3 May 2017
+###
+### occult-sshfs / occultsshfs
+#####################################
