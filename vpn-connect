@@ -1,9 +1,9 @@
 #!/bin/bash
 ##
-vpnservername='guvpn.georgetown.edu'
+vpnservername=''
 reset=''
 stop=''
-install=''
+instal=''
 verbose=''
 ##
 # Define Function
@@ -11,12 +11,12 @@ verbose=''
 show_help(){
 cat <<EOF
 
-Usage :: ${0##*/} [to SERVERNAME] [reset] [stop] [install] [help]
+Usage :: ${0##*/} [to SERVERNAME] [reset] [stop] [info] [install] [help]
 
   Initiate an openconnect instance to perform passwordless login into a VPN server. Open connect will
   attempt automatic reconnection if the connection is dropped at any point.
 
-Note  :: 
+Notes :: 
 
 * This program will install openconnect and its dependencies if they do not exist. 
 
@@ -41,15 +41,22 @@ while :; do
         'stop')
         	stop='stop'
         	;;
-        'moreinfo')
-        	verbose='printextrainfo'
-        	;;
+        'info')
+			showinfo='showlogs'
+			if [ -n "${2}" ]; then
+                vpnservername=${2}
+                shift
+            else
+                echo "ERROR -server requires a non-empty option argument" >&2
+                exit
+            fi			
+			;;
 		'install')
 	        instal='install'
-		;;
+			;;
 		'uninstall')
 	        uninstall='install'
-		;;		
+			;;		
         'to')
 			if [ -n "${2}" ]; then
                 vpnservername=${2}
@@ -77,27 +84,42 @@ function checkvpn_password(){
 	[ ! -d ${logindir} ] && echo -e "\n\n 🛠 Setting up Environment for Automatic VPN Logins..\n" && mkdir -m 700 $logindir && sudo chown $(whoami) $logindir
 	# Create Password file if it doesn't exist
 	if [ ! -e "$logindir/.connect.$vpnservername" ]; then
-		read -p " 👤 VPN Login Required! Please enter your username:   " user && read -sp "  ** Please enter your password:  🔑  " password && sudo echo ${user}:${password} | sudo openssl enc -aes-256-cbc > "$logindir/.connect.$vpnservername" && chmod 400 "${logindir}/.connect.${vpnservername}"
+		read -p " 👤 VPN Login Required! Please enter your username:   " user && read -sp "  ** Please enter your password:  🔑  " password && echo ''
+		echo -e "\n Please Enter the Admnistrator Password for $(whoami)@$(hostname) Followed by An Encryption PassPhrase. \n Write this Down to Keep Password Safe!" 
+		echo ${user}:${password} | sudo openssl enc -aes-256-cbc > "$logindir/.connect.$vpnservername" && chmod 400 "${logindir}/.connect.${vpnservername}"
 	else
 		echo -e " \n  -------------------------------------------\n   🔓  Decrypting Credentials for Auto Login\n  -------------------------------------------\n"
-		user=$(sudo cat "${logindir}/.connect.$vpnservername" | openssl enc -aes-256-cbc -d | cut -f1 -d:) && password=$(sudo cat "$logindir/.connect.$vpnservername" | openssl enc -aes-256-cbc -d | cut -f2- -d:)
+		local secret=$(cat "${logindir}/.connect.$vpnservername") 		
+		echo -e "\n Enter The De-encryption PassPhrase to Retrieve VPN Username\n"
+		user=$(cat "${logindir}/.connect.$vpnservername" | openssl enc -aes-256-cbc -d | cut -f1 -d:)
+		echo -e "\n Enter The De-encryption PassPhrase to Retrieve VPN Password"
+		password=$(cat "${logindir}/.connect.$vpnservername" | openssl enc -aes-256-cbc -d | cut -f2- -d:)
 	fi	
+}
+# Define Function
+## Check for any missing software, ask user if he would like to install.. otherwise exit
+function checkvpn_dependencies(){
+	[ -z $(which openconnect) ] || [ ! -e /Library/Extensions/tap.kext ] || [ ! -e /Library/Extensions/tun.kext ] || [ ! -e /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist ] && echo -e "Missing Dependencies! Installation is Not Complete! Would you like to install vpn-connect? (y|n)" && read prompt
+	[ "${prompt}" = 'Y'] || [ "${prompt}" = 'y'] && instal='install'
+	[ "${prompt}" != 'y' ] || [ "${prompt}" != 'Y'] && exit
 }
 # Define function
 ## Install Open Connect
 function checkvpn_install(){
+	echo -e "\n 📦  🛠  Installing Required Dependencies & Setting Up Shop for VPN-CONNECT\n"
 	## Exit if Not OS X
 	[ ! $(uname) = "Darwin" ] && echo -e "\n️❗️  Support is limited to macOS Darwin at this time.. quitting\n" && exit 0
 	# Install HomeBrew to download everything!
-	[ -z $(which brew) ] && ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+	[ -z $(which brew) ] && echo -e "\n 🍺  Installing Homebrew - Package Manager for OS X (see more info here: https://brew.sh/)\n" && ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 	# Install wget if it doesn't exist
-	[ -z $(which wget) ] && brew install wget
+	[ -z $(which wget) ] && echo -e "\n 📡  Installing Binary Program 'wget' - Command for Downloading Files from the Internet\n" && brew install wget
 	# Download & Install TunTap	
 	[ ! -e /Library/Extensions/tap.kext ] || [ ! -e /Library/Extensions/tun.kext ] || [ ! -e /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist ] && echo -e "\n\n ⚙️  Installing TunTap Kernel Extension for OpenConnect Configuration\n\n" && wget https://downloads.sourceforge.net/project/tuntaposx/tuntap/20150118/tuntap_20150118.tar.gz && mkdir -p ${HOME}/tuntap && tar -xzvf tuntap_20150118.tar.gz -C ${HOME}/tuntap && echo -e " **\n\nPlease install the TUNTAP Driver in the pop up window\n" && open ${HOME}/tuntap/tuntap_20150118.pkg && rm -v tuntap_20150118.tar.gz
 	# Get Authenticated Certificate from Apple
-	[ ! -e ${HOME}/.ssh/apple_root_ca.pem ] && echo -e "\n\n 🔖  Fetching Apple Root Certificate.. --> ${HOME}/.ssh/apple_root_ca.pem\n\n" && [ ! -d ${HOME}./ssh ] && mkdir -p ${HOME}/.ssh && wget https://www.apple.com/certificateauthority/AppleRootCA-G2.cer -O ${HOME}/.ssh/apple_root_ca.pem
+	[ ! -d ${HOME}/.ssh ] && echo -e "\nCreating directory for Secure Shell Configruation :: ${HOME}/.ssh\n" && mkdir "${HOME}/.ssh"
+	[ ! -f ${HOME}/.ssh/apple_root_ca.pem ] && echo -e "\n\n 🔖  Fetching Apple Root Certificate.. --> ${HOME}/.ssh/apple_root_ca.pem\n\n" && [ ! -d ${HOME}./ssh ] && wget https://www.apple.com/certificateauthority/AppleRootCA-G2.cer -O ${HOME}/.ssh/apple_root_ca.pem
 	# Install Open Connect With HomeBrew
-	[ -z $(which openconnect) ] && brew install openconnect && exit
+	[ -z $(which openconnect) ] && echo -e "\n 🔧  Downloading & Installing OpenConnect Program - VPN Utility for Networks Configured Via Cisco Systems\n" && brew install openconnect && echo -e "\n✅  ✅  ✅  ...done, try './vpn-connect to <serveraddress>' to connect to a vpn network" && exit
 }
 # Define Function
 ## Uninstall Dependencies
@@ -114,6 +136,14 @@ function checkvpn_reset(){
 	sudo rm -r "${HOME}/.ssh/.autovpn"
 	exit
 }
+# Define Function
+## Print Log for Connection
+function checkvpn_info(){
+	defaultlog="${HOME}/.ssh/.autovpn/connect.$vpnservername.log"
+	[ -f ${defaultlog} ] && cat ${defaultlog}
+	[ ! -f ${defaultlog} ] && echo -e "\n VPN Log Not Found -- try reconnecting with ./vpn-connect to <serveraddress>\n"
+	exit
+}
 # Define Function 
 ## Connect 
 function checkvpn_connect(){
@@ -121,7 +151,11 @@ function checkvpn_connect(){
 	local root_certificate=${HOME}/.ssh/apple_root_ca.pem
 	[ ! -e ${root_certificate} ] && read -p "ERROR, cannot find root certificate: ${root_certificate}. Please enter path to root certificate file." root_certificate && [ ! -e $root_certificate ] && echo -e "Root Certificate Not Found: Exiting.. refer to https://gist.github.com/moklett/3170636 for more info" && exit 1
 	echo ${password} | sudo openconnect --user=$user --usergroup='Default' --cafile=${root_certificate} --reconnect-timeout 1 --passwd-on-stdin ${vpnservername} > "${HOME}/.ssh/.autovpn/connect.$vpnservername.log" 2>&1 &
-	echo -e '   📻  Connection Established  \n\n'
+	sleep 5
+	local checkconnected=$(cat "${HOME}/.ssh/.autovpn/connect.$vpnservername.log" | grep 'Connected as *.*.*.*')
+	[ ! -z "${checkconnected}" ] && echo -e ' 📻  Connection Established \n\t - type "./vpn-connect info <servername>" to get information about connection\n\t - type "./vpn-connect stop" to kill vpn session\n'
+	[ -z "${checkconnected}" ] && echo -e ' ❗️  ❗️  ❗️  ❗️ Connection Failed ❗️  ❗️  ❗️  ❗️\nPassword & Username may be incorrect... type "./vpn-connect reset" to re-enter username & password'
+	echo $checkconnected && echo ''
 }
 # Define Function
 ## Stop Connection
@@ -130,16 +164,18 @@ function checkvpn_stop(){
 }
 ##
 # Run check-vpn pipeline
+# print info and quit
+[ ! -z ${showinfo} ] && checkvpn_info
 ## kill process if stop signal
-[ ! -z $stop ] && checkvpn_stop
+[ ! -z ${stop} ] && checkvpn_stop
 ## delete all locally stored meta data
-[ ! -z $reset ] && checkvpn_reset
+[ ! -z ${reset} ] && checkvpn_reset
 ## check if user signals uninstall script
-[ ! -z $uninstall ] && checkvpn_uninstall
+[ ! -z ${uninstall} ] && checkvpn_uninstall
 ## check if openconnect is installed
 [ ! -z ${instal} ] && checkvpn_install
 ## check password and connect if no stop signal
-[ -z $stop ] && checkvpn_password && checkvpn_connect
+[ -z ${stop} ] && checkvpn_password && checkvpn_connect
 
 ### use this to keep connection active..
 ##while [ 1 ] ; do ping -c 2 10.11.12.13 ; sleep 60 ; done
