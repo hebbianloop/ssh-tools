@@ -158,7 +158,7 @@ EOF
 # Define Function
 ## Check that sshfs is installed
 function occultsshfs_dependencies(){
-	if [ -z $(sshfs) ]; then
+	if [ -z $(which sshfs) ]; then
 		echo -e "\n Installing SSHFS "
         if [ $(uname) = 'Darwin' ]; then
             if [ -z $(which brew) ]; then
