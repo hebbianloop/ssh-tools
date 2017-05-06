@@ -42,31 +42,31 @@ while :; do
         	stop='stop'
         	;;
         'info')
-			showinfo='showlogs'
-			if [ -n "${2}" ]; then
-                vpnservername=${2}
-                shift
-            else
-                echo "ERROR -server requires a non-empty option argument" >&2
-                exit
-            fi			
-			;;
-		'install')
+	       showinfo='showlogs'
+	       if [ -n "${2}" ]; then
+		   vpnservername=${2}
+                   shift
+               else
+                   echo "ERROR - please specify server name you would like to get information on" >&2
+                   exit
+               fi			
+	        ;;
+	'install')
 	        instal='install'
-			;;
-		'uninstall')
+		;;
+	'uninstall')
 	        uninstall='install'
-			;;		
+		;;		
         'to')
-			if [ -n "${2}" ]; then
-                vpnservername=${2}
-                shift
-            else
-                echo "ERROR -server requires a non-empty option argument" >&2
-                exit
-            fi
-            ;;
-        -?*)
+		if [ -n "${2}" ]; then
+                    vpnservername=${2}
+                    shift
+		else
+                    echo "ERROR - please specify server name you would like to connect to" >&2
+                    exit
+		fi
+		;;
+        ?*)
             printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
             exit
             ;;
