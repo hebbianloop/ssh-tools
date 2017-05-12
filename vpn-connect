@@ -130,7 +130,7 @@ function checkvpn_uninstall(){
 function checkvpn_dependencies(){
 	[ -z $(which openconnect) ] || [ ! -e /Library/Extensions/tap.kext ] || [ ! -e /Library/Extensions/tun.kext ] || [ ! -e /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist ] || [ ! -e ${HOME}/.ssh/apple_root_ca.pem ] && echo -e "Missing Dependencies! Type Y to install, any key to quit" && read prompt	
 	[ "${prompt}" = 'Y'] || [ "${prompt}" = 'y' ] && echo -e "\n♻️  Performing Clean Install" && checkvpn_uninstall && checkvpn_install
-	[ "${prompt}" != 'Y' ]|| [ "${prompt}" != 'y' ] && exit
+	[ "${prompt}" != 'Y' ] || [ "${prompt}" != 'y' ] && exit
 }
 # Define Function
 ## reset all account information
