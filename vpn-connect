@@ -96,6 +96,13 @@ function checkvpn_password(){
 		password=$(cat "${logindir}/.connect.$vpnservername" | openssl enc -aes-256-cbc -d | cut -f2- -d:)
 	fi	
 }
+# Define Function
+## Check for any missing software, ask user if he would like to install.. otherwise exit
+function checkvpn_dependencies(){
+	[ -z $(which openconnect) ] || [ ! -e /Library/Extensions/tap.kext ] || [ ! -e /Library/Extensions/tun.kext ] || [ ! -e /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist ] && echo -e "Missing Dependencies! Installation is Not Complete! Would you like to install vpn-connect? (y|n)" && read prompt
+	[ "${prompt}" = 'Y'] || [ "${prompt}" = 'y'] && instal='install'
+	[ "${prompt}" != 'y' ] || [ "${prompt}" != 'Y'] && exit
+}
 # Define function
 ## Install Open Connect
 function checkvpn_install(){
@@ -117,20 +124,10 @@ function checkvpn_install(){
 # Define Function
 ## Uninstall Dependencies
 function checkvpn_uninstall(){
-	[ -e /Library/Extensions/tap.kext ] && sudo rm /Library/Extensions/tap.kext 
-	[ -e /Library/Extensions/tun.kext ] && sudo rm  /Library/Extensions/tun.kext
-	[ -e /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist ]  && sudo rm -r /Library/LaunchDaemons/net.sf.tuntaposx.tap.plistsudo ${HOME}/tuntap
+	[ -e /Library/Extensions/tap.kext ] || [ -e /Library/Extensions/tun.kext ] || [ -e /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist ]  && sudo rm -v /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist && sudo rm -rv /Library/Extensions/tun.kext /Library/Extensions/tap.kext ${HOME}/tuntap
 	[ -e ${HOME}/.ssh/apple_root_ca.pem ] && rm -v ${HOME}/.ssh/apple_root_ca.pem
 	[ $(which openconnect) ] && brew uninstall openconnect
-	# leave wget and brew
 	exit
-}
-# Define Function
-## Check for any missing software, ask user if he would like to install.. otherwise exit
-function checkvpn_dependencies(){
-	[ -z $(which openconnect) ] || [ ! -e /Library/Extensions/tap.kext ] || [ ! -e /Library/Extensions/tun.kext ] || [ ! -e /Library/LaunchDaemons/net.sf.tuntaposx.tap.plist ] || [ ! -e ${HOME}/.ssh/apple_root_ca.pem ] && echo -e "Missing Dependencies! Type Y to install, any key to quit" && read prompt	
-	[ "${prompt}" = 'Y'] || [ "${prompt}" = 'y' ] && echo -e "\n♻️  Performing Clean Install" && checkvpn_uninstall && checkvpn_install
-	[ "${prompt}" != 'Y' ] || [ "${prompt}" != 'y' ] && exit
 }
 # Define Function
 ## reset all account information
@@ -150,8 +147,6 @@ function checkvpn_info(){
 # Define Function 
 ## Connect 
 function checkvpn_connect(){
-	checkvpn_dependencies
-	checkvpn_password
 	echo -e "\n   📡  Seeking Initial Connection to ${vpnservername}\n\n"
 	local root_certificate=${HOME}/.ssh/apple_root_ca.pem
 	[ ! -e ${root_certificate} ] && read -p "ERROR, cannot find root certificate: ${root_certificate}. Please enter path to root certificate file." root_certificate && [ ! -e $root_certificate ] && echo -e "Root Certificate Not Found: Exiting.. refer to https://gist.github.com/moklett/3170636 for more info" && exit 1
@@ -177,8 +172,10 @@ function checkvpn_stop(){
 [ ! -z ${reset} ] && checkvpn_reset
 ## check if user signals uninstall script
 [ ! -z ${uninstall} ] && checkvpn_uninstall
+## check if openconnect is installed
+[ ! -z ${instal} ] && checkvpn_install
 ## check password and connect if no stop signal
-[ -z ${stop} ] && checkvpn_connect
+[ -z ${stop} ] && checkvpn_password && checkvpn_connect &
 
 ### use this to keep connection active..
 ##while [ 1 ] ; do ping -c 2 10.11.12.13 ; sleep 60 ; done
