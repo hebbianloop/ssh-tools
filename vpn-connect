@@ -25,6 +25,34 @@ Notes ::
 
 ** Compatible with macOS only.
 
+
+⚙   INSTALLATION CAVEATS - openconnect requires manual intervention to finish the installation
+
+   Please complete the following steps before running this command again :: 
+
+  ❗  ️ Running openconnect requires sudo because it can affect DNS resolution. You must add this program
+      to the sudoers list to avoid typing your password in each time you want to connect.
+
+	* To enable passwordless reconnection, type the following into your terminal:
+
+		>> sudo visudo -f /etc/sudoers
+
+	* A text editor will appear and you must scroll with the down arrow until you see the following
+
+		## 
+		## User privilege specification
+		## 
+		root ALL=(ALL) ALL
+		%admin ALL=(ALL) ALL
+
+	* Copy/Paste the following line right under the last line in the section above
+
+	 	%admin  ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect
+
+  ✅   Now you may establish a persistent vpn connection by typing
+
+      >> vpn-connect to <nameofvpn>
+
 EOF
 }
 # Parse Options 
@@ -175,7 +203,7 @@ function checkvpn_stop(){
 ## check if openconnect is installed
 [ ! -z ${instal} ] && checkvpn_install
 ## check password and connect if no stop signal
-[ -z ${stop} ] && checkvpn_password && checkvpn_connect &
+[ -z ${stop} ] && checkvpn_password && checkvpn_connect
 
 ### use this to keep connection active..
 ##while [ 1 ] ; do ping -c 2 10.11.12.13 ; sleep 60 ; done
