@@ -280,8 +280,9 @@ function occultsshfs_banish(){
 	echo "---------------------------------------------------------------------------------------------------------------------"
 	exit	
 }
+## THIS DOESNT MAKE SENSE.. the whole point of creating an alias is to be able to have zombie signal in write allowed dir
 function occultsshfs_checkperms(){
-notwritable=$(ssh ${user}@${host} "[ ! -w ${mount_this} ] && echo 'notwritable'")
+#notwritable=$(ssh ${user}@${host} "[ ! -w ${mount_this} ] && echo 'notwritable'")
 if [ ! -z ${notwritable} ]; then
 	echo -e '📁🔒 Remote FileSystem Is Not Writable -- ❗️❗️ FILESYSTEM WILL NOT RESSURRECT UPON LOSS OF CONNECTION!!!\n'
 fi
@@ -326,7 +327,6 @@ function occultsshfs_raisezombie(){
 				echo -e "\n---------------------------------------------------------------------------------------------------------------------\n ⚰👻  Zombie Binding Spell Returns Null Value * * Resurrecting SSHFS Connection * *  $(date)\n"
 				sshfs ${user}@${host}:${HOSTHOME}/${hostalias}/ $mount_here -C -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
 				[ -e $mount_here/$(whoami).$(hostname).bindzombie ] && echo "   ✅  Succesfully Raised Zombie In ${mount_here}"
-				open ${mount_here}
 			fi
 		done
 	fi
@@ -339,13 +339,14 @@ function occultsshfs_castspell(){
 	# Banish Zombie & BindingSpell 
 	[ ${banish} ] && occultsshfs_banish
 	# First Check If Remote FileSystem is Writable
-	occultsshfs_checkperms
+	#occultsshfs_checkperms
 	# Get Path to Home Directory for Remote User
 	local HOSTHOME=$(ssh ${user}@${host} 'echo ${HOME}')	
 	# Perform an Occult Ritual To Bind Zombie
 	occultsshfs_occultritual ${HOSTHOME}
 	# Now Raise Zombie
 	occultsshfs_raisezombie ${HOSTHOME} > ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log 2>&1 & 
+	open ${mount_here}
 }
 
 # Execute top level function 
