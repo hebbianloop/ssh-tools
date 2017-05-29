@@ -13,7 +13,7 @@ cat <<EOF
 
 Usage :: ${0##*/} [to SERVERNAME] [reset] [stop] [info] [install] [help]
 
-  Initiate an openconnect instance to perform passwordless login into a VPN server. Open connect will
+  Initiate an openconnect instance to perform passwordless login to a VPN server. Open connect will
   attempt automatic reconnection if the connection is dropped at any point.
 
 Notes :: 
@@ -23,7 +23,7 @@ Notes ::
 * The TUNTAP utility is required for functionality on OS X. Please see installation instructions for
   adding openconnect to the sudoers list to avoid connection hangups due to pending password prompts.
 
-** Compatible with macOS only.
+** Compatible with macOS Sierra only.
 
 
 ⚙   INSTALLATION CAVEATS - openconnect requires manual intervention to finish the installation
@@ -60,8 +60,8 @@ EOF
 while :; do
     case ${1} in
         'help')
-        show_help
-        exit
+        	show_help
+        	exit
         	;;
         'reset')
         	reset='reset'
@@ -71,29 +71,29 @@ while :; do
         	;;
         'info')
 	       showinfo='showlogs'
-	       if [ -n "${2}" ]; then
-		   vpnservername=${2}
-                   shift
-               else
-                   echo "ERROR - please specify server name you would like to get information on" >&2
-                   exit
-               fi			
+	    	if [ -n "${2}" ]; then
+		   		vpnservername=${2}
+            	shift
+        	else
+            	echo "ERROR - please specify server name you would like to get information on" >&2
+            	exit
+        	fi			
 	        ;;
-	'install')
+		'install')
 	        instal='install'
-		;;
-	'uninstall')
+			;;
+		'uninstall')
 	        uninstall='install'
-		;;		
+			;;		
         'to')
-		if [ -n "${2}" ]; then
-                    vpnservername=${2}
+			if [ -n "${2}" ]; then
+            	    vpnservername=${2}
                     shift
-		else
+			else
                     echo "ERROR - please specify server name you would like to connect to" >&2
                     exit
-		fi
-		;;
+			fi
+			;;
         ?*)
             printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
             exit
@@ -104,24 +104,74 @@ while :; do
     shift
 done
 # Define Function
+## Prompt User for Password
+function checkvpn_credentials_prompt(){
+	local useraction=$(echo "display dialog \"  👤  Enter User Name for ${vpnservername}.\" default answer \"$(whoami)\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\"" | osascript)
+	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	[ "${continu}" = "Never Mind" ] && exit
+	[ "${continu}" = "Continue" ] && user=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
+	local useraction=$(echo "display dialog \"  🗝  Enter Password for ${vpnservername}.\" default answer \"\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\" with hidden answer" | osascript)	
+	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	[ "${continu}" = "Never Mind" ] && exit
+	[ "${continu}" = "Continue" ] && password=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
+}
+# Define Function
+## Prompt User for Password
+function checkvpn_secretkey_prompt(){
+	local useraction=$(echo "display dialog \"  🔑  Enter Encryption Key for ${vpnservername}.\" default answer \"\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\" with hidden answer" | osascript)
+	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	[ "${continu}" = "Continue" ] && secretkey=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
+	[ "${continu}" = "Never Mind" ] && exit
+}
+# Define Function
+## Prompt User for VPN Address
+function checkvpn_vpnaddress_prompt(){
+	local useraction=$(echo "display dialog \"  Enter VPN address 📡 \" default answer \"guvpn.georgetown.edu\" buttons {\"Quit\",\"Continue\"} default button \"Continue\"" | osascript)
+	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	[ "${continu}" = "Continue" ] && vpnservername=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
+	[ "${continu}" = "Quit" ] && exit
+	echo -e "\nUser Input: $vpnservername\n"
+}
+# Define Function
+## Prompt User for Password
+function checkvpn_sudo_prompt(){
+	local useraction=$(echo "display dialog \" Please Enter the Admnistrator Password for $(whoami)@$(hostname).\" default answer \"\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\" with hidden answer" with icon caution | osascript)
+	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	[ "${continu}" = "Never Mind" ] && exit
+	[ "${continu}" = "Continue" ] && sudopw=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
+}
+# Define Function
 ## Securely store VPN password
 # Path to log in information
 function checkvpn_password(){
 	local logindir="${HOME}/.ssh/.autovpn"
+	echo -e "\nChecking Credentials :: $logindir/.connect.$vpnservername\n"
 	# Create login directory and set appropriate permissions
 	[ ! -d ${logindir} ] && echo -e "\n\n 🛠 Setting up Environment for Automatic VPN Logins..\n" && mkdir -m 700 $logindir && sudo chown $(whoami) $logindir
 	# Create Password file if it doesn't exist
 	if [ ! -e "$logindir/.connect.$vpnservername" ]; then
-		read -p " 👤 VPN Login Required! Please enter your username:   " user && read -sp "  ** Please enter your password:  🔑  " password && echo ''
+		local secret="${logindir}/.connect.$vpnservername"
+		#read -p " 👤 VPN Login Required! Please enter your username:   " user && read -sp "  ** Please enter your password:  🔑  " password && echo ''
+		local useraction=$(terminal-notifier -sound "Frog" -message "${vpnservername}" -title "👤 VPN Login Required!" -group 'vpn-connect-autoprompt' -actions "Enter Credentials" -closeLabel "Never Mind" 2>&1)
+		local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+		[ "${useraction}" = "Enter Credentials" ] && checkvpn_credentials_prompt
+		[ "${useraction}" = "Never Mind" ] && exit
 		echo -e "\n Please Enter the Admnistrator Password for $(whoami)@$(hostname) Followed by An Encryption PassPhrase. \n Write this Down to Keep Password Safe!" 
-		echo ${user}:${password} | sudo openssl enc -aes-256-cbc > "$logindir/.connect.$vpnservername" && chmod 400 "${logindir}/.connect.${vpnservername}"
+		[ -z ${sudopw} ] && checkvpn_sudo_prompt
+		checkvpn_secretkey_prompt && echo "${user}:${password}" | openssl enc -aes-256-cbc -k "${secretkey}" > "${secret}" && echo "${sudopw}" | sudo -S chmod 400 "${secret}"
 	else
 		echo -e " \n  -------------------------------------------\n   🔓  Decrypting Credentials for Auto Login\n  -------------------------------------------\n"
-		local secret=$(cat "${logindir}/.connect.$vpnservername") 		
+		local secret="${logindir}/.connect.$vpnservername"
 		echo -e "\n Enter The De-encryption PassPhrase to Retrieve VPN Username\n"
-		user=$(cat "${logindir}/.connect.$vpnservername" | openssl enc -aes-256-cbc -d | cut -f1 -d:)
-		echo -e "\n Enter The De-encryption PassPhrase to Retrieve VPN Password"
-		password=$(cat "${logindir}/.connect.$vpnservername" | openssl enc -aes-256-cbc -d | cut -f2- -d:)
+		# notification
+		local useraction=$(terminal-notifier -sound "Submarine" -message "Enter the encryption key" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Enter Key" -closeLabel "Never Mind" 2>&1)
+		local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+		[ "${useraction}" = "Enter Key" ] && checkvpn_secretkey_prompt
+		[ "${useraction}" = "Never Mind" ] && exit
+		## decode password with passphrase
+		user=$(openssl enc -aes-256-cbc -in ${secret} -k ${secretkey} -d | cut -f1 -d:)
+		#echo -e "\n Enter The De-encryption PassPhrase to Retrieve VPN Password"
+		password=$(openssl enc -aes-256-cbc -in ${secret} -k ${secretkey} -d | cut -f2- -d:)
 	fi	
 }
 # Define Function
@@ -134,7 +184,7 @@ function checkvpn_dependencies(){
 # Define function
 ## Install Open Connect
 function checkvpn_install(){
-	echo -e "\n 📦  🛠  Installing Required Dependencies & Setting Up Shop for VPN-CONNECT\n"
+	echo -e "\n 📦  🛠  Checking Required Dependencies & Setting Up Shop for VPN-CONNECT\n"
 	## Exit if Not OS X
 	[ ! $(uname) = "Darwin" ] && echo -e "\n️❗️  Support is limited to macOS Darwin at this time.. quitting\n" && exit 0
 	# Install HomeBrew to download everything!
@@ -147,7 +197,11 @@ function checkvpn_install(){
 	[ ! -d ${HOME}/.ssh ] && echo -e "\nCreating directory for Secure Shell Configruation :: ${HOME}/.ssh\n" && mkdir "${HOME}/.ssh"
 	[ ! -f ${HOME}/.ssh/apple_root_ca.pem ] && echo -e "\n\n 🔖  Fetching Apple Root Certificate.. --> ${HOME}/.ssh/apple_root_ca.pem\n\n" && [ ! -d ${HOME}./ssh ] && wget https://www.apple.com/certificateauthority/AppleRootCA-G2.cer -O ${HOME}/.ssh/apple_root_ca.pem
 	# Install Open Connect With HomeBrew
-	[ -z $(which openconnect) ] && echo -e "\n 🔧  Downloading & Installing OpenConnect Program - VPN Utility for Networks Configured Via Cisco Systems\n" && brew install openconnect && echo -e "\n✅  ✅  ✅  ...done, try './vpn-connect to <serveraddress>' to connect to a vpn network" && exit
+	[ -z $(which openconnect) ] && echo -e "\n 🔧  Downloading & Installing OpenConnect Program - VPN Utility for Networks Configured Via Cisco Systems\n" && brew install openconnect
+	# Install base dependencies for os x notifications
+	[ -z $(which terminal-notifier) ] && brew install terminal-notifier
+	# Get User Input for Next Step
+	#local useraction=$(terminal-notifier -message "try './vpn-connect to <serveraddress>'" -title "✅ vpn-connect is ready to use" -sound "Submarine" -group 'vpn-connect-autoprompt' -timeout 10 2>&1)
 }
 # Define Function
 ## Uninstall Dependencies
@@ -162,48 +216,86 @@ function checkvpn_uninstall(){
 function checkvpn_reset(){
 	echo -e "\n Reseting Environment for Automatic VPN Logins\n"
 	sudo rm -r "${HOME}/.ssh/.autovpn"
-	exit
-}
-# Define Function
-## Print Log for Connection
-function checkvpn_info(){
-	defaultlog="${HOME}/.ssh/.autovpn/connect.$vpnservername.log"
-	[ -f ${defaultlog} ] && cat ${defaultlog}
-	[ ! -f ${defaultlog} ] && echo -e "\n VPN Log Not Found -- try reconnecting with ./vpn-connect to <serveraddress>\n"
+	local useraction=$(terminal-notifier -sound "Pop"  -message "vpn credentials have been reset" -title "${vpnservername}"  -group 'vpn-connect-autoprompt' -actions "Reconnect" -closeLabel "Sounds Good" 2>&1)
+	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+	[ "${useraction}" = "Reconnect" ] && checkvpn_connect	
 	exit
 }
 # Define Function 
 ## Connect 
 function checkvpn_connect(){
+	checkvpn_install
+	checkvpn_password
 	echo -e "\n   📡  Seeking Initial Connection to ${vpnservername}\n\n"
 	local root_certificate=${HOME}/.ssh/apple_root_ca.pem
 	[ ! -e ${root_certificate} ] && read -p "ERROR, cannot find root certificate: ${root_certificate}. Please enter path to root certificate file." root_certificate && [ ! -e $root_certificate ] && echo -e "Root Certificate Not Found: Exiting.. refer to https://gist.github.com/moklett/3170636 for more info" && exit 1
+	[ -z ${sudopw} ] && checkvpn_sudo_prompt && echo "${sudopw}" | sudo -S whoami
 	echo ${password} | sudo openconnect --user=$user --usergroup='Default' --cafile=${root_certificate} --reconnect-timeout 1 --passwd-on-stdin ${vpnservername} > "${HOME}/.ssh/.autovpn/connect.$vpnservername.log" 2>&1 &
-	sleep 5
-	local checkconnected=$(cat "${HOME}/.ssh/.autovpn/connect.$vpnservername.log" | grep 'Connected as *.*.*.*')
-	[ ! -z "${checkconnected}" ] && echo -e ' 📻  Connection Established \n\t - type "./vpn-connect info <servername>" to get information about connection\n\t - type "./vpn-connect stop" to kill vpn session\n'
-	[ -z "${checkconnected}" ] && echo -e ' ❗️  ❗️  ❗️  ❗️ Connection Failed ❗️  ❗️  ❗️  ❗️\nPassword & Username may be incorrect... type "./vpn-connect reset" to re-enter username & password'
-	echo $checkconnected && echo ''
+	sleep 10
+	checkvpn_info
+	#[ ! -z "${checkconnected}" ] && echo -e ' 📻  Connection Established \n\t - type "./vpn-connect info <servername>" to get information about connection\n\t - type "./vpn-connect stop" to kill vpn session\n'
+	#[ -z "${checkconnected}" ] && echo -e ' ❗️  ❗️  ❗️  ❗️ Connection Failed ❗️  ❗️  ❗️  ❗️\nPassword & Username may be incorrect... type "./vpn-connect reset" to re-enter username & password'
+	#echo $checkconnected && echo ''
 }
 # Define Function
 ## Stop Connection
 function checkvpn_stop(){
-	sudo pkill openconnect 
+	echo -e '\nDisconnecting from $vpnservername\n'
+	[ -z ${sudopw} ] && checkvpn_sudo_prompt && echo ${sudopw} | sudo -S pkill openconnect
+	local useraction=$(terminal-notifier -sound "Sosumi"  -message "disconnected from vpn" -title "${vpnservername}"  -group 'vpn-connect-autoprompt' -actions "Reconnect","Main Menu" -closeLabel "Sounds Good" -dropdownLabel "Show Options" 2>&1)
+	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+	[ "${useraction}" = "Reconnect" ] && checkvpn_connect
+}
+# Define Function
+## Print Log for Connection
+function checkvpn_info(){
+	defaultlog="${HOME}/.ssh/.autovpn/connect.$vpnservername.log"
+	local checkrunning=$(echo $(ps aux | grep "[g]uvpn.georgetown.edu"))
+	echo -e "\nChecking if Running : $checkrunning\n"
+	[ -f ${defaultlog} ] && echo -e "Printing Log :: \n" && cat ${defaultlog}
+	# Notify User of issues
+	[ ! -f ${defaultlog} ] && echo -e "\n VPN Log Not Found -- try reconnecting with ./vpn-connect to <serveraddress>\n" && local useraction=$(terminal-notifier -sound "Sosumi" -message "Error no network history (try resetting)" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Reset" -closeLabel "Never Mind" 2>&1)
+	[ -z "${checkrunning}" ] && echo -e ' ❗️  ❗️  ❗️  ❗️ Openconnect Has Exited ❗️  ❗️  ❗️  ❗️\n' && useraction=$(terminal-notifier -sound "Sosumi" -message "❗Connection Failed (try reconnecting/resetting)" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Reset","Reconnect","Main Menu" -closeLabel "Never Mind" -dropdownLabel "Show Options" 2>&1)
+	[ "${checkrunning}" ] && local useraction=$(terminal-notifier -sound "Submarine" -message "$(cat $defaultlog | grep -o "Connected as .*")" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Disconnect","Reset","Main Menu" -closeLabel "Sounds Good" -dropdownLabel "Show Options" 2>&1)
+	# Parse response
+	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+	[ "${useraction}" = "Reconnect" ] && checkvpn_connect
+	[ "${useraction}" = "Disconnect" ] && checkvpn_stop
+	[ "${useraction}" = "Reset" ] && checkvpn_reset
+	[ "${useraction}" = "Main Menu" ] && checkvpn_mainmenu
+	[ "${useraction}" = "Never Mind" ] || [ "${useraction}" = "Sounds Good" ] && exit
+}
+# Define Function
+## Run this first and figure out what user wants
+function checkvpn_mainmenu(){
+	local useraction=$(terminal-notifier -message "select desired option" -title "VPN-CONNECT" -subtitle "Main Menu" -sound "Submarine" -group 'vpn-connect-autoprompt' -actions "Connect","Get Info","Disconnect","Reset","Uninstall" -closeLabel "Quit" -dropdownLabel "Show Options" 2>&1)
+	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+	echo -e "\nMain Menu User Selection: $useraction\n"
+	# Make sure servername is specified
+	[ -z "${vpnservername}" ] && checkvpn_vpnaddress_prompt
+	# Parse Main Menu Options
+	[ "${useraction}" = "Connect" ] && checkvpn_connect	
+	[ "${useraction}" = "Get Info" ] && checkvpn_info
+	[ "${useraction}" = "Disconnect" ] && checkvpn_stop
+	[ "${useraction}" = "Reset" ] && checkvpn_reset
+	[ "${useraction}" = "Uninstall" ] && checkvpn_uninstall
+	# Quit if Done 	
+	[ "${useraction}" = "Quit" ] && exit	
 }
 ##
-# Run check-vpn pipeline
+## Run check-vpn pipeline
+# always check if openconnect & requirments are installed
+checkvpn_mainmenu
 # print info and quit
-[ ! -z ${showinfo} ] && checkvpn_info
-## kill process if stop signal
-[ ! -z ${stop} ] && checkvpn_stop
-## delete all locally stored meta data
-[ ! -z ${reset} ] && checkvpn_reset
-## check if user signals uninstall script
-[ ! -z ${uninstall} ] && checkvpn_uninstall
-## check if openconnect is installed
-[ ! -z ${instal} ] && checkvpn_install
-## check password and connect if no stop signal
-[ -z ${stop} ] && checkvpn_password && checkvpn_connect
+#[ ! -z ${showinfo} ] && checkvpn_info
+# kill process if stop signal
+#[ ! -z ${stop} ] && checkvpn_stop
+# delete all locally stored meta data
+#[ ! -z ${reset} ] && checkvpn_reset
+# check if user signals uninstall script
+#[ ! -z ${uninstall} ] && checkvpn_uninstall
+# check password and connect if no stop signal
+#[ -z ${stop} ] && [ -z ${showinfo} ] && checkvpn_install
 
 ### use this to keep connection active..
 ##while [ 1 ] ; do ping -c 2 10.11.12.13 ; sleep 60 ; done
