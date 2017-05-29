@@ -199,7 +199,15 @@ function checkvpn_install(){
 	# Install Open Connect With HomeBrew
 	[ -z $(which openconnect) ] && echo -e "\n 🔧  Downloading & Installing OpenConnect Program - VPN Utility for Networks Configured Via Cisco Systems\n" && brew install openconnect
 	# Install base dependencies for os x notifications
-	[ -z $(which terminal-notifier) ] && brew install terminal-notifier
+	if [ -z $(which terminal-notifier) ]; then
+		brew install terminal-notifier
+		local useraction=$(echo "display dialog \"Please change the notification alert style for terminal-notifer to "Alerts"\" buttons {\"Quit\",\"Continue\"} default button \"Continue\" with icon caution" | osascript)
+		echo "User Action: $useraction"
+		local continu=$(echo ${useraction} | grep -o "button returned:.*" | cut -f2- -d:)
+		echo "User Action : ${continu}"
+		[ "${continu}" = "Quit" ] && brew uninstall terminal-notifier && exit
+		[ "${continu}" = "Continue" ] && open "x-apple.systempreferences:com.apple.preference.notifications"
+	fi
 	# Get User Input for Next Step
 	#local useraction=$(terminal-notifier -message "try './vpn-connect to <serveraddress>'" -title "✅ vpn-connect is ready to use" -sound "Submarine" -group 'vpn-connect-autoprompt' -timeout 10 2>&1)
 }
@@ -224,7 +232,6 @@ function checkvpn_reset(){
 # Define Function 
 ## Connect 
 function checkvpn_connect(){
-	checkvpn_install
 	checkvpn_password
 	echo -e "\n   📡  Seeking Initial Connection to ${vpnservername}\n\n"
 	local root_certificate=${HOME}/.ssh/apple_root_ca.pem
@@ -268,9 +275,13 @@ function checkvpn_info(){
 # Define Function
 ## Run this first and figure out what user wants
 function checkvpn_mainmenu(){
+	# Check to make sure everything is installed first!
+	checkvpn_install
 	local useraction=$(terminal-notifier -message "select desired option" -title "VPN-CONNECT" -subtitle "Main Menu" -sound "Submarine" -group 'vpn-connect-autoprompt' -actions "Connect","Get Info","Disconnect","Reset","Uninstall" -closeLabel "Quit" -dropdownLabel "Show Options" 2>&1)
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 	echo -e "\nMain Menu User Selection: $useraction\n"
+	# Quit if Done 	
+	[ "${useraction}" = "Quit" ] && exit	
 	# Make sure servername is specified
 	[ -z "${vpnservername}" ] && checkvpn_vpnaddress_prompt
 	# Parse Main Menu Options
@@ -279,8 +290,6 @@ function checkvpn_mainmenu(){
 	[ "${useraction}" = "Disconnect" ] && checkvpn_stop
 	[ "${useraction}" = "Reset" ] && checkvpn_reset
 	[ "${useraction}" = "Uninstall" ] && checkvpn_uninstall
-	# Quit if Done 	
-	[ "${useraction}" = "Quit" ] && exit	
 }
 ##
 ## Run check-vpn pipeline
