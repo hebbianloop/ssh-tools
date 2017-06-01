@@ -108,10 +108,12 @@ done
 function checkvpn_credentials_prompt(){
 	local useraction=$(echo "display dialog \"  👤  Enter User Name for ${vpnservername}.\" default answer \"$(whoami)\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\"" | osascript)
 	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	echo "User Action: $continu"
 	[ "${continu}" = "Never Mind" ] && exit
 	[ "${continu}" = "Continue" ] && user=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
 	local useraction=$(echo "display dialog \"  🗝  Enter Password for ${vpnservername}.\" default answer \"\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\" with hidden answer" | osascript)	
 	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	echo "User Action: $continu"
 	[ "${continu}" = "Never Mind" ] && exit
 	[ "${continu}" = "Continue" ] && password=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
 }
@@ -120,6 +122,7 @@ function checkvpn_credentials_prompt(){
 function checkvpn_secretkey_prompt(){
 	local useraction=$(echo "display dialog \"  🔑  Enter Encryption Key for ${vpnservername}.\" default answer \"\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\" with hidden answer" | osascript)
 	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	echo "User Action: $continu"
 	[ "${continu}" = "Continue" ] && secretkey=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
 	[ "${continu}" = "Never Mind" ] && exit
 }
@@ -128,6 +131,7 @@ function checkvpn_secretkey_prompt(){
 function checkvpn_vpnaddress_prompt(){
 	local useraction=$(echo "display dialog \"  Enter VPN address 📡 \" default answer \"guvpn.georgetown.edu\" buttons {\"Quit\",\"Continue\"} default button \"Continue\"" | osascript)
 	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	echo "User Action: $continu"
 	[ "${continu}" = "Continue" ] && vpnservername=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
 	[ "${continu}" = "Quit" ] && exit
 	echo -e "\nUser Input: $vpnservername\n"
@@ -137,6 +141,7 @@ function checkvpn_vpnaddress_prompt(){
 function checkvpn_sudo_prompt(){
 	local useraction=$(echo "display dialog \" Please Enter the Admnistrator Password for $(whoami)@$(hostname).\" default answer \"\" buttons {\"Never Mind\",\"Continue\"} default button \"Continue\" with hidden answer" with icon caution | osascript)
 	local continu=$(echo ${useraction} | grep -o "button returned:.*," | cut -f2- -d: | tr -d ,)
+	echo "User Action: $continu"
 	[ "${continu}" = "Never Mind" ] && exit
 	[ "${continu}" = "Continue" ] && sudopw=$(echo ${useraction} | sed -n -e 's/^.*text returned://p')
 }
@@ -154,6 +159,7 @@ function checkvpn_password(){
 		#read -p " 👤 VPN Login Required! Please enter your username:   " user && read -sp "  ** Please enter your password:  🔑  " password && echo ''
 		local useraction=$(terminal-notifier -sound "Frog" -message "${vpnservername}" -title "👤 VPN Login Required!" -group 'vpn-connect-autoprompt' -actions "Enter Credentials" -closeLabel "Never Mind" 2>&1)
 		local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+		echo "User Action: $useraction"
 		[ "${useraction}" = "Enter Credentials" ] && checkvpn_credentials_prompt
 		[ "${useraction}" = "Never Mind" ] && exit
 		echo -e "\n Please Enter the Admnistrator Password for $(whoami)@$(hostname) Followed by An Encryption PassPhrase. \n Write this Down to Keep Password Safe!" 
@@ -166,6 +172,7 @@ function checkvpn_password(){
 		# notification
 		local useraction=$(terminal-notifier -sound "Submarine" -message "Enter the encryption key" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Enter Key" -closeLabel "Never Mind" 2>&1)
 		local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+		echo "User Action: $useraction"
 		[ "${useraction}" = "Enter Key" ] && checkvpn_secretkey_prompt
 		[ "${useraction}" = "Never Mind" ] && exit
 		## decode password with passphrase
@@ -226,6 +233,7 @@ function checkvpn_reset(){
 	sudo rm -r "${HOME}/.ssh/.autovpn"
 	local useraction=$(terminal-notifier -sound "Pop"  -message "vpn credentials have been reset" -title "${vpnservername}"  -group 'vpn-connect-autoprompt' -actions "Reconnect" -closeLabel "Sounds Good" 2>&1)
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+	echo "User Action: $useraction"
 	[ "${useraction}" = "Reconnect" ] && checkvpn_connect	
 	exit
 }
@@ -251,6 +259,7 @@ function checkvpn_stop(){
 	[ -z ${sudopw} ] && checkvpn_sudo_prompt && echo ${sudopw} | sudo -S pkill openconnect
 	local useraction=$(terminal-notifier -sound "Sosumi"  -message "disconnected from vpn" -title "${vpnservername}"  -group 'vpn-connect-autoprompt' -actions "Reconnect","Main Menu" -closeLabel "Sounds Good" -dropdownLabel "Show Options" 2>&1)
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+	echo "User Action: $useraction"
 	[ "${useraction}" = "Reconnect" ] && checkvpn_connect
 }
 # Define Function
@@ -263,29 +272,43 @@ function checkvpn_info(){
 	# Notify User of issues
 	[ ! -f ${defaultlog} ] && echo -e "\n VPN Log Not Found -- try reconnecting with ./vpn-connect to <serveraddress>\n" && local useraction=$(terminal-notifier -sound "Sosumi" -message "Error no network history (try resetting)" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Reset" -closeLabel "Never Mind" 2>&1)
 	[ -z "${checkrunning}" ] && echo -e ' ❗️  ❗️  ❗️  ❗️ Openconnect Has Exited ❗️  ❗️  ❗️  ❗️\n' && useraction=$(terminal-notifier -sound "Sosumi" -message "❗Connection Failed (try reconnecting/resetting)" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Reset","Reconnect","Main Menu" -closeLabel "Never Mind" -dropdownLabel "Show Options" 2>&1)
-	[ "${checkrunning}" ] && local useraction=$(terminal-notifier -sound "Submarine" -message "$(cat $defaultlog | grep -o "Connected as .*")" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Disconnect","Reset","Main Menu" -closeLabel "Sounds Good" -dropdownLabel "Show Options" 2>&1)
+	[ "${checkrunning}" ] && local useraction=$(terminal-notifier -sound "Submarine" -message "$(cat $defaultlog | grep -o "Connected as .*")" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Disconnect","Reset","Main Menu" -closeLabel "Exit" -dropdownLabel "Show Options" 2>&1)
 	# Parse response
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
+	echo "User Action: $useraction"
 	[ "${useraction}" = "Reconnect" ] && checkvpn_connect
 	[ "${useraction}" = "Disconnect" ] && checkvpn_stop
 	[ "${useraction}" = "Reset" ] && checkvpn_reset
 	[ "${useraction}" = "Main Menu" ] && checkvpn_mainmenu
-	[ "${useraction}" = "Never Mind" ] || [ "${useraction}" = "Sounds Good" ] && exit
+	[ "${useraction}" = "Never Mind" ] || [ "${useraction}" = "Sounds Good" ] || [ "${useraction}" = "Exit" ] && exit
 }
+## Process any command line inputs before running main menu
+# print info and quit
+[ ! -z ${showinfo} ] && checkvpn_info
+# kill process if stop signal
+[ ! -z ${stop} ] && checkvpn_stop
+# delete all locally stored meta data
+[ ! -z ${reset} ] && checkvpn_reset
+# check if user signals uninstall script
+[ ! -z ${uninstall} ] && checkvpn_uninstall
+# check password and connect if no stop signal
+#[ -z ${stop} ] && [ -z ${showinfo} ] && checkvpn_install && checkvpn_connect
+##
 # Define Function
 ## Run this first and figure out what user wants
 function checkvpn_mainmenu(){
 	# Check to make sure everything is installed first!
 	checkvpn_install
-	local useraction=$(terminal-notifier -message "select desired option" -title "VPN-CONNECT" -subtitle "Main Menu" -sound "Submarine" -group 'vpn-connect-autoprompt' -actions "Connect","Get Info","Disconnect","Reset","Uninstall" -closeLabel "Quit" -dropdownLabel "Show Options" 2>&1)
+	local useraction=$(terminal-notifier -message "select desired option" -title "vpn-connect" -subtitle "🚩 Main Menu" -sound "Submarine" -group 'vpn-connect-autoprompt' -actions "Connect","Get Info","Disconnect","Reset","Uninstall" -closeLabel "Quit" -dropdownLabel "Show Options" 2>&1)
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 	echo -e "\nMain Menu User Selection: $useraction\n"
+	[ "${useraction}" = "CONTENTCLICKED" ] && local useraction=$(terminal-notifier -message "select desired option" -title "vpn-connect" -subtitle "🚩 Main Menu" -sound "Submarine" -group 'vpn-connect-autoprompt' -actions "Connect","Get Info","Disconnect","Reset","Uninstall" -closeLabel "Quit" -dropdownLabel "Show Options" 2>&1) && 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p') && 	echo -e "\nMain Menu User Selection: $useraction\n"
 	# Quit if Done 	
 	[ "${useraction}" = "Quit" ] && exit	
 	# Make sure servername is specified
 	[ -z "${vpnservername}" ] && checkvpn_vpnaddress_prompt
 	# Parse Main Menu Options
-	[ "${useraction}" = "Connect" ] && checkvpn_connect	
+	[ "${useraction}" = "Connect" ] && checkvpn_connect
 	[ "${useraction}" = "Get Info" ] && checkvpn_info
 	[ "${useraction}" = "Disconnect" ] && checkvpn_stop
 	[ "${useraction}" = "Reset" ] && checkvpn_reset
@@ -295,16 +318,6 @@ function checkvpn_mainmenu(){
 ## Run check-vpn pipeline
 # always check if openconnect & requirments are installed
 checkvpn_mainmenu
-# print info and quit
-#[ ! -z ${showinfo} ] && checkvpn_info
-# kill process if stop signal
-#[ ! -z ${stop} ] && checkvpn_stop
-# delete all locally stored meta data
-#[ ! -z ${reset} ] && checkvpn_reset
-# check if user signals uninstall script
-#[ ! -z ${uninstall} ] && checkvpn_uninstall
-# check password and connect if no stop signal
-#[ -z ${stop} ] && [ -z ${showinfo} ] && checkvpn_install
 
 ### use this to keep connection active..
 ##while [ 1 ] ; do ping -c 2 10.11.12.13 ; sleep 60 ; done
