@@ -160,7 +160,7 @@ function checkvpn_password(){
 		local useraction=$(terminal-notifier -sound "Frog" -message "${vpnservername}" -title "👤 VPN Login Required!" -group 'vpn-connect-autoprompt' -actions "Enter Credentials" -closeLabel "Never Mind" 2>&1)
 		local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 		echo "User Action: $useraction"
-		[ "${useraction}" = "Enter Credentials" ] && checkvpn_credentials_prompt
+		[ "${useraction}" = "Enter Credentials" ] || [ "${useraction}" = "CONTENTCLICKED" ] && checkvpn_credentials_prompt
 		[ "${useraction}" = "Never Mind" ] && exit
 		echo -e "\n Please Enter the Admnistrator Password for $(whoami)@$(hostname) Followed by An Encryption PassPhrase. \n Write this Down to Keep Password Safe!" 
 		[ -z ${sudopw} ] && checkvpn_sudo_prompt
@@ -173,7 +173,7 @@ function checkvpn_password(){
 		local useraction=$(terminal-notifier -sound "Submarine" -message "Enter the encryption key" -title "vpn-connect" -subtitle "${vpnservername}" -group 'vpn-connect-autoprompt' -actions "Enter Key" -closeLabel "Never Mind" 2>&1)
 		local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 		echo "User Action: $useraction"
-		[ "${useraction}" = "Enter Key" ] && checkvpn_secretkey_prompt
+		[ "${useraction}" = "Enter Key" ] || [ "${useraction}" = "CONTENTCLICKED" ]  && checkvpn_secretkey_prompt
 		[ "${useraction}" = "Never Mind" ] && exit
 		## decode password with passphrase
 		user=$(openssl enc -aes-256-cbc -in ${secret} -k ${secretkey} -d | cut -f1 -d:)
@@ -213,7 +213,7 @@ function checkvpn_install(){
 		local continu=$(echo ${useraction} | grep -o "button returned:.*" | cut -f2- -d:)
 		echo "User Action : ${continu}"
 		[ "${continu}" = "Quit" ] && brew uninstall terminal-notifier && exit
-		[ "${continu}" = "Continue" ] && open "x-apple.systempreferences:com.apple.preference.notifications"
+		[ "${continu}" = "Continue" ] || [ "${useraction}" = "CONTENTCLICKED" ]  && open "x-apple.systempreferences:com.apple.preference.notifications"
 	fi
 	# Get User Input for Next Step
 	#local useraction=$(terminal-notifier -message "try './vpn-connect to <serveraddress>'" -title "✅ vpn-connect is ready to use" -sound "Submarine" -group 'vpn-connect-autoprompt' -timeout 10 2>&1)
@@ -234,6 +234,7 @@ function checkvpn_reset(){
 	local useraction=$(terminal-notifier -sound "Pop"  -message "vpn credentials have been reset" -title "${vpnservername}"  -group 'vpn-connect-autoprompt' -actions "Reconnect" -closeLabel "Sounds Good" 2>&1)
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 	echo "User Action: $useraction"
+	[ "${useraction}" = "CONTENTCLICKED" ] && checkvpn_reset
 	[ "${useraction}" = "Reconnect" ] && checkvpn_connect	
 	exit
 }
@@ -260,6 +261,7 @@ function checkvpn_stop(){
 	local useraction=$(terminal-notifier -sound "Sosumi"  -message "disconnected from vpn" -title "${vpnservername}"  -group 'vpn-connect-autoprompt' -actions "Reconnect","Main Menu" -closeLabel "Sounds Good" -dropdownLabel "Show Options" 2>&1)
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 	echo "User Action: $useraction"
+	[ "${useraction}" = "CONTENTCLICKED" ] && checkvpn_stop
 	[ "${useraction}" = "Reconnect" ] && checkvpn_connect
 }
 # Define Function
@@ -276,6 +278,7 @@ function checkvpn_info(){
 	# Parse response
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 	echo "User Action: $useraction"
+	[ "${useraction}" = "CONTENTCLICKED" ] && checkvpn_info # recursively call function if clicked
 	[ "${useraction}" = "Reconnect" ] && checkvpn_connect
 	[ "${useraction}" = "Disconnect" ] && checkvpn_stop
 	[ "${useraction}" = "Reset" ] && checkvpn_reset
@@ -302,7 +305,7 @@ function checkvpn_mainmenu(){
 	local useraction=$(terminal-notifier -message "select desired option" -title "vpn-connect" -subtitle "🚩 Main Menu" -sound "Submarine" -group 'vpn-connect-autoprompt' -actions "Connect","Get Info","Disconnect","Reset","Uninstall" -closeLabel "Quit" -dropdownLabel "Show Options" 2>&1)
 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p')
 	echo -e "\nMain Menu User Selection: $useraction\n"
-	[ "${useraction}" = "CONTENTCLICKED" ] && local useraction=$(terminal-notifier -message "select desired option" -title "vpn-connect" -subtitle "🚩 Main Menu" -sound "Submarine" -group 'vpn-connect-autoprompt' -actions "Connect","Get Info","Disconnect","Reset","Uninstall" -closeLabel "Quit" -dropdownLabel "Show Options" 2>&1) && 	local useraction=$(echo ${useraction} | sed -n -e 's/^.*@//p') && 	echo -e "\nMain Menu User Selection: $useraction\n"
+	[ "${useraction}" = "CONTENTCLICKED" ] && checkvpn_mainmenu
 	# Quit if Done 	
 	[ "${useraction}" = "Quit" ] && exit	
 	# Make sure servername is specified
