@@ -6,7 +6,7 @@ user=''
 host=''
 # server mount info
 hostalias=''
-mount_this='/'
+mount_this=''
 mount_here='/Volumes'
 # vpn
 vpnservername=''
@@ -15,7 +15,7 @@ vpnservername=''
 ## Help 
 function show_help(){
 
-cat <<EOF
+cat <<-EOF
 
 Usage: ${0##*/}  -  A wrapper for the Secure Shell File System (sshfs) protocol for maintaining a zombie connection that ressurects upon disconnect.
 
@@ -42,9 +42,8 @@ Usage: ${0##*/}  -  A wrapper for the Secure Shell File System (sshfs) protocol 
                 [-u|--uname USER]         user name for remote host
                 [-h|--host HOST]          host address / host name
                 [-p|--serverdir PATH]     directory to be accessed on the remote host
-	        [-l|--localdir PATH]      the remote directory will be placed here
+	       		[-l|--localdir PATH]      the remote directory will be placed here
                 [-a|--hostalias STRING]   name for the local portal to the remote directory
-
                 [-v|--vpn SERVERNAME]     enter this option to tunnel via VPN (address required)
 
      Example ::
@@ -149,11 +148,11 @@ cat <<EOF
 
 EOF
 # Check for input arguments
-[ -z ${host} ] && echo -e "\n * Please Enter Host Address ::  " && read host
-[ -z ${user} ] && echo -e "\n * Please Enter Username @ ${host} ::  " && read user
-[ -z ${hostalias} ] && echo -e "\n * Enter Alias for Remote File System (i.e. something descriptive for what you're mounting) ::  " && read hostalias
-[ -z ${mount_this} ] && echo -e "\n * Enter Remote File System Path You Would Like to Mount as ${hostalias} ::  " && read mount_this
-[ ! -z ${vpn} ] && [ -z ${vpnservername} ] && echo -e "\n * Enter VPN address to tunnel through (leave empty for no VPN tunneling) ::  " && read vpnservername
+[ -z ${host} ] && echo -e "\nPlease Enter Host Address ::  " && read -p "▶️  " host
+[ -z ${user} ] && echo -e "\nPlease Enter Username @ ${host} ::  " && read -p "▶️  " user
+[ -z ${hostalias} ] && echo -e "\nEnter Alias for Remote File System (i.e. something descriptive for what you're mounting) ::  " && read -p "▶️  " hostalias
+[ -z ${mount_this} ] && echo -e "\nEnter Remote File System Path You Would Like to Mount as ${hostalias} ::  " && read -p "▶️  " mount_this
+[ ! -z ${vpn} ] && [ -z ${vpnservername} ] && echo -e "\nEnter VPN address to tunnel through (leave empty for no VPN tunneling) ::  " && read -p "▶️  " vpnservername
 ##
 # Define Function
 ## Check that sshfs is installed
@@ -164,7 +163,7 @@ function occultsshfs_dependencies(){
             if [ -z $(which brew) ]; then
                 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
             fi
-            brew install cask fuse
+            brew cask install osxfuse
 			brew install sshfs
         elif [ $(uname) = 'Linux' ]; then
         	yum install fuse-sshfs
@@ -179,13 +178,19 @@ function occultsshfs_dependencies(){
 ## Assemble input arguments to final formats
 function occultsshfs_buildcoffin(){
 	mount_here=${mount_here}/${hostalias}
-	echo -e "⚰    Setting up Local Coffin for Zombie: $mount_here\n" && [ ! -d ${mount_here} ] && mkdir -p ${mount_here}
+	echo -e "\n⚰    Setting up Local Coffin for Zombie: $mount_here\n" && [ ! -d ${mount_here} ] && mkdir -p ${mount_here}
 	[ ! -e "${HOME}/.ssh/.autosshfs" ] && mkdir -p ${HOME}/.ssh/.autosshfs
 }
 # Define Function
 ## Establish Persistent VPN Connection via OpenConnect
 function occultsshfs_checkvpn(){
-	[ ${vpn} ] && vpn-connect to ${vpnservername}
+	[ ${vpn} ] && vpn-connect
+	i=1
+	sp="/-\|"
+	echo -n ' ' 
+	while [ -z "$(echo $(ps aux | grep "[g]uvpn.georgetown.edu"))"]; do
+		printf "\b${sp:i++%${#sp}:1} Connecting to VPN...\r"
+	done
 }
 # Define Function
 ## Check Existence of SSH Keys, ssh-agent & keychain
@@ -250,7 +255,7 @@ function occultsshfs_checkalias(){
 				#echo -e "\n\t * * Unique identifier ${newhostalias} has been appended to distinguish distinct file systems\n"
 				# Otherwise leaves things alone if the desired filesystems match between user and alias origin							
 			elif [ "${identity}" = "${mount_this}" ]; then
-				echo -e "✅    Link to FileSystem Already Exists on ${user}@${host}:${link} <--> ${identity}"
+				echo -e "\n✅    Link to FileSystem Already Exists on ${user}@${host}:${link} <--> ${identity}"
 				hostalias=$(basename ${link})
 				break
 			fi
@@ -261,7 +266,7 @@ function occultsshfs_checkalias(){
 # Define Function
 ## Remove Zombification Signal & Anchor 
 function occultsshfs_banish(){
-	echo -e "\n		  👹💭  Banishing SSHFS Zombie - Unmounting Remote File System, Deleting Zombie Signal  \n"
+	echo -e "\n👹💭  Banishing SSHFS Zombie - Unmounting Remote File System, Deleting Zombie Signal  \n"
 	echo -e "\t\t   ${user}@${host}:${mount_this} <-- 💥  --> $(hostname):${mount_here}/${hostalias}"
 	ssh ${user}@${host} "[ -e ${mount_this}/$(whoami).$(hostname).bindzombie ] && unlink ${mount_this}/$(whoami).$(hostname).bindzombie"	
 	# Get Correct Alias
@@ -276,15 +281,19 @@ function occultsshfs_banish(){
 		sleep 1
 		[ -d ${mount_here}/${hostalias} ] && rm -rv ${mount_here}/${hostalias}
 	fi
-	echo -e "\n\t\t\t\t\t  ✅ Zombie Signal Has Been Killed"
+	echo -e "\n✅ Zombie Signal Has Been Killed"
 	echo "---------------------------------------------------------------------------------------------------------------------"
 	exit	
 }
-## THIS DOESNT MAKE SENSE.. the whole point of creating an alias is to be able to have zombie signal in write allowed dir
+# Define function
+## Check permissions of remote file system and set up aliases if needed 
 function occultsshfs_checkperms(){
-#notwritable=$(ssh ${user}@${host} "[ ! -w ${mount_this} ] && echo 'notwritable'")
+notwritable=$(ssh ${user}@${host} "[ ! -w ${mount_this} ] && echo 'notwritable'")
 if [ ! -z ${notwritable} ]; then
-	echo -e '📁🔒 Remote FileSystem Is Not Writable -- ❗️❗️ FILESYSTEM WILL NOT RESSURRECT UPON LOSS OF CONNECTION!!!\n'
+	echo -e '🔐 Remote FileSystem Is Not Writable -- zombie signal cant be written to ${mount_this}\n'
+	echo -e "\t 📢  The resident necromancer recommends you mount a writable directory (i.e. your home dir) and use aliases to point to non-writable directory if you would like to maintain a persistent connection."
+	read -p "▶️  Would you like to mount your remote home directory and use aliases instead? [Y|N]" useraction
+	[ "${useraction}" = "Y" ] || [ "${useraction}" = "y" ] && mount_this="${HOSTHOME}" && notwritable=''
 fi
 }
 # Define Function
@@ -303,6 +312,7 @@ function occultsshfs_occultritual(){
 		echo -e "\n⛓    Binding Remote File System to Local Host  ⛓\n"
 		local binding="${1}/.ssh/.autosshfs/$(whoami).$(hostname).${hostalias}.bindzombie"
 		ssh ${user}@${host} "mkdir -p ${1}/.ssh/.autosshfs; [ ! -e ${binding} ] && touch ${binding}"
+		# whats the point of this??
 		local secondbinding="${mount_this}/$(whoami).$(hostname).bindzombie"
 		ssh ${user}@${host} "[ ! -e ${mount_this}/$(whoami).$(hostname).bindzombie ] && ln -sv ${binding} ${secondbinding}"
 	fi		
@@ -318,10 +328,10 @@ function occultsshfs_raisezombie(){
 	if [ ${notwritable} ] || [ ${nokeys} ]; then
 		echo -e "...establishing mortal filesystem connection because binding file cannot be written to ${user}@${host}:${mount_this}"
 		echo "	${user}@${host}:${mount_this} <--🗣 📡 --> $(hostname):${mount_here}/${hostalias}"
-		echo sshfs ${user}@${host}:${HOSTHOME}/${hostalias}/ $mount_here -C -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
+		sshfs ${user}@${host}:${HOSTHOME}/${hostalias}/ $mount_here -C -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
 	else
 		touch ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
-		# Zombie will stay alive as long as the zombification signal file exists
+		# Zombie will stay alive as long as the zombification signal file exists on local machine
 		while [ -e "${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie" ]; do
 			if [ ! -e $mount_here/$(whoami).$(hostname).bindzombie ]; then
 				echo -e "\n---------------------------------------------------------------------------------------------------------------------\n ⚰👻  Zombie Binding Spell Returns Null Value * * Resurrecting SSHFS Connection * *  $(date)\n"
@@ -338,10 +348,10 @@ function occultsshfs_castspell(){
 	occultsshfs_dependencies
 	# Banish Zombie & BindingSpell 
 	[ ${banish} ] && occultsshfs_banish
-	# First Check If Remote FileSystem is Writable
-	#occultsshfs_checkperms
 	# Get Path to Home Directory for Remote User
-	local HOSTHOME=$(ssh ${user}@${host} 'echo ${HOME}')	
+	HOSTHOME=$(ssh ${user}@${host} 'echo ${HOME}')	
+	# First Check If Remote FileSystem is Writable
+	occultsshfs_checkperms
 	# Perform an Occult Ritual To Bind Zombie
 	occultsshfs_occultritual ${HOSTHOME}
 	# Now Raise Zombie
