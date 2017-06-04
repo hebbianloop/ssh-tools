@@ -29,9 +29,11 @@ Use this program to establish keyless log in between a client and a host. You ca
 
 For more information see https://wiki.archlinux.org/index.php/SSH_keys
 
-### vpn-connect
+### vpn-connect (macOS 10.8+ only)
 
-This program harnesses the openconnect utility to establish a persistent VPN connection. Use this program to keep your ISP from spying on you without having to constantly check your connection.
+This program uses macOS notifications and the openconnect utility to establish a persistent VPN connection. Use this program to keep your ISP from spying on you without having to constantly check your connection.
+
+Simply double click or type '''./vpn-connect''' in a terminal prompt to begin
 
 ### occult-sshfs
 
