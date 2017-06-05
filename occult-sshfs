@@ -249,7 +249,7 @@ function occultsshfs_checksshkeys(){
 	# get location of current key
 	local currentkey=$(ssh-add -L)
 	# use key if exists 
-	[ "${currentkey}" ] && echo -e "   🔑  SSH Keys are Currently Active: (${currentkey}) \n"
+	[ "${currentkey}" ] && echo -e "   🔑  SSH Keys are Currently Active \n"
 	## maybe modify setup-sshkeys to be more flexible and do certain tasks with input args?
 	## this needs some modification still
 	[ -z "${currentkey}" ] || [ -z "$(which keychain)" ] && echo -e "❗️❗️  No Active Encryption Key, SSH agent or Passphrase Keychain Detected!\n **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n"  && setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
@@ -299,22 +299,23 @@ function occultsshfs_checkalias(){
 ## Remove Zombification Signal & Anchor 
 function occultsshfs_banish(){
 	echo -e "\n👹💭  Banishing SSHFS Zombie - Unmounting Remote File System, Deleting Zombie Signal  \n"
-	echo -e "\t\t   ${user}@${host}:${mount_this} <-- 💥  --> $(hostname):${mount_here}/${hostalias}"
-	ssh ${user}@${host} "[ -e ${mount_this}/$(whoami).$(hostname).bindzombie ] && unlink ${mount_this}/$(whoami).$(hostname).bindzombie"	
+	echo -e "${user}@${host}:${mount_this} <-- 💥  --> $(hostname):${mount_here}/${hostalias}"
 	# Get Correct Alias
 	occultsshfs_checkalias
+	# Delete Zombie Signal
 	if [ -e ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie ]; then
 		rm ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
 	fi
+	# Remove Binding/Anchor
 	if [ -d $mount_here/${hostalias} ]; then
-		[ -h $mount_here/$(whoami).$(hostname).bindzombie ] && unlink -v $mount_here/$(whoami).$(hostname).bindzombie
+		[ -e $mount_here/${hostalias}/$(whoami).$(hostname).bindzombie ] && rm -v $mount_here/${hostalias}/$(whoami).$(hostname).bindzombie
+		echo ''
 		umount -f ${mount_here}/${hostalias} > /dev/null
 		sleep 1
 		## Call function recursively until unmount succeeds (might need time out to avoid endless loops)
 		[ -e $mount_here/$(whoami).$(hostname).bindzombie ] && occultsshfs_banish
-		[ ! -e ${mount_here}/${hostalias}/$(whoami).$(hostname).bindzombie ] && ssh ${user}'@'${host} "rm ${mount_here}/$(whoami).$(hostname).bindzombie"
 	fi
-	echo -e "\n✅    Zombie Signal Has Been Killed"
+	echo -e "\n✅    Zombie Signal Has Been Killed =-= $(date)"
 	echo "---------------------------------------------------------------------------------------------------------------------"
 	exit	
 }
@@ -334,34 +335,30 @@ function occultsshfs_occultritual(){
 	local binding="${HOSTHOME}/.ssh/.autosshfs/$(whoami).$(hostname).${hostalias}.bindzombie"
 	ssh ${user}@${host} "mkdir -vp ${HOSTHOME}/.ssh/.autosshfs; [ ! -e ${binding} ] && touch ${binding}"
 	# Link Remote FileSystem to Remote Home Directory with Anchor Once Host Alias Checks Out
-	echo -e "\n\tSoft-Linking Remote File Systems on ${user}@${host} :: ${mount_this} ↔️  ${HOSTHOME}/${hostalias}"
+	echo -e "\n\tSoft-Linking Remote File Systems on ${user}@${host} :: ${mount_this} ↔️  ${HOSTHOME}/${hostalias}\n"
 	ssh ${user}@${host} "[ ! -e ${HOSTHOME}/${hostalias} ] && ln -s ${mount_this} ${HOSTHOME}/${hostalias}"
 }
 # Define Function 
 ## Loop indefinitely while Zombie Signal Exists & Check for Anchor
 function occultsshfs_raisezombie(){
-	echo "🙌 Behold! Raising Zombie SSHFS Connection ::"
-	echo "${user}@${host}:${mount_this} <--👻 📡 --> $(hostname):${mount_here}/${hostalias}"
-	# Create signal for loop - don't stop until signal is deleted (via banish)
-	touch ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
-	while [ -e "${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie" ]; do
-		if [ ! -e ${mount_here}/$(whoami).$(hostname).bindzombie ]; then
-			echo -e "⚰👻  Resurrecting SSHFS Connection * *  $(date) - ($mount_here/$(whoami).$(hostname).bindzombie does not exist)\n"
-			sshfs ${user}@${host}:${HOSTHOME} $mount_here -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
-			sleep 1
-			# Create Anchor/Binding - this is a way of knowing that the directory is readable with remote contents
-			touch ${mount_here}/$(whoami).$(hostname).bindzombie
-			if [ -e $mount_here/$(whoami).$(hostname).bindzombie ]; then
-				echo "   ✅  Succesfully Raised Zombie In ${mount_here}" && open 
-		        if [ $(uname) = 'Darwin' ]; then
-		        	open ${mount_here}/${hostalias}
-		        	# add notification here?
-		        elif [ $(uname) = 'Linux' ]; then
-		        	ls ${mount_here}/${hostalias}
-		        fi		
-			fi
-		fi
-	done
+	# SSHFS connection
+	sshfs ${user}@${host}:${HOSTHOME} $mount_here -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
+	# Create Anchor/Binding - this is a way of knowing that the directory is readable with remote contents
+	touch ${mount_here}/$(whoami).$(hostname).bindzombie && sleep 1
+	# Check to see Binding exists in mounted directory
+	if [ -e $mount_here/$(whoami).$(hostname).bindzombie ]; then
+		echo -e "\n✅  Succesfully Raised Zombie In ${mount_here}\n▶️  $(date)"
+		# If successful open/print contents
+        if [ $(uname) = 'Darwin' ]; then
+        	open ${mount_here}/${hostalias}
+        elif [ $(uname) = 'Linux' ]; then
+        	ls ${mount_here}/${hostalias}
+        fi
+    else
+    	# Repeat function recursively until it succeeds (probably need time out for this)		
+    	echo -e "\n⚰👻  Resurrecting SSHFS Connection =-=  $(date) =-= ($mount_here/$(whoami).$(hostname).bindzombie does not exist)\n"
+    	occultsshfs_raisezombie
+	fi
 }
 # Define Function
 ## Assemble current sequence of functions and execute spell
@@ -373,18 +370,23 @@ function occultsshfs_castspell(){
 	# Banish Zombie & BindingSpell 
 	[ ${banish} ] && occultsshfs_banish
 	[ -z "${HOSTHOME}" ] && echo '❗️  Could not determine remote home directory path - username/hostname may be incorrect, exiting...' && exit
-	# First Check If Remote FileSystem is Writable
-	occultsshfs_checkperms
 	# Perform an Occult Ritual To Bind Zombie
 	occultsshfs_occultritual
 	# Now Raise Zombie
-	occultsshfs_raisezombie > ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log 2>&1 & 
+	echo "🙌 Behold! Raising Zombie SSHFS Connection :: ${user}@${host}:${mount_this} <--👻 📡 --> $(hostname):${mount_here}/${hostalias}\n"
+	## Create signal for loop - don't stop until signal is deleted (via banish)
+	touch "${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie"
+	## initiate loop
+	while [ -e "${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie" ]; do 
+		[ ! -e ${mount_here}/$(whoami).$(hostname).bindzombie ] && occultsshfs_raisezombie
+	done
 }
 
 # Execute top level function 
-occultsshfs_castspell
+occultsshfs_castspell > ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log 2>&1 & 
 echo ''
-echo -e "\tRunning Zombie in Background - you can check status at ~/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log"
+[ ! -z ${banish} ] && echo -e "\t\t\t\t\t\t💀 Zombie Process Has Been Killed"
+[ -z ${banish} ] && echo -e "   Running Zombie in Background - you can check status at ~/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log"
 echo '---------------------------------------------------------------------------------------------------------------------'
 #####################################
 ### Shady El Damaty ; 3 May 2017
