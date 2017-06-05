@@ -7,80 +7,103 @@ host=''
 # server mount info
 hostalias=''
 mount_this=''
-mount_here=''
+mount_here='/Volumes'
 # vpn
 vpnservername=''
+# moreinfo
+moreinfo=''
 ##
 # Define Function
 ## Help 
 function show_help(){
 
-cat <<-EOF
+helptxt=$(cat <<-EOF
 
-Usage: ${0##*/}  -  A wrapper for the Secure Shell File System (sshfs) protocol for maintaining a zombie connection that ressurects upon disconnect.
+Usage: ${0##*/}  [-u|--uname USER] [-h|--host HOST] [-p|--serverdir PATH] [-l|--localdir PATH] [-a|--hostalias NAME] [-v|--vpn HOST2]
 
-	Caveats & Info :: 
+A wrapper for the Secure Shell File System (sshfs) protocol for maintaining a zombie connection that ressurects upon disconnect.
 
-		* This program relies on an active ssh-agent running via keychain to maintain passwordless logins. The user will be taken through the ssk key 
-		  installation if ssh-agent is not detected with an active private key (usually ~/.ssh/id_rsa or id_dsa).
+🚩 Options :: 
 
-		* You can connect to servers hidden behind a firewall if you have VPN credentials for the protected network. A persistent VPN connection will be
-		  setup and established if the user species the --vpn option.  Type `vpn-connect help` for more information.
+\t[help]			  print this message 
+\t[moreinfo]		  prints more information
 
-		* Persistent Zombie connections cannot occur if you do not have write access to the remote file system. This program creates a file on the remote
-		  file system that signals when the connection is dropped. If the file can't be created then persistence can't be maintained. This program attempts
-		  to mount the remote home directory and create a link to the file system if write access is not granted.
+\t[-u|--uname USER]         user name for remote host
+\t[-h|--host HOST]          host address / host name
+\t[-p|--serverdir PATH]     directory to be accessed on the remote host
+\t[-l|--localdir PATH]      the remote directory will be placed here
+\t[-a|--hostalias STRING]   name for the local portal to the remote directory
+\t[-v|--vpn SERVERNAME]     enter this option to tunnel via VPN (address required; macOS only)
 
-		* ${0##*/} will link the desired remote file system into the home directory prior to sshfs-ing into the user's home directory on the remote host.
-		  The home directory is preferred to maintain consistency in filepaths. Also keeps things clean.
+🚩 Examples ::
 
-		* Zombie signals and log files can be found under ~/.ssh/.autosshfs/*.log. Delete the appropriate zombie file in this directory if banish doesn't
-		  succesfully disconnect the remote file system.
+\tBasic usage, program will prompt user for basic inputs, server fs will be mounted in /Volumes
 
-     Options :: 
-                [help]		          print usage 
+\t\t${0##*/}
 
-                [-u|--uname USER]         user name for remote host
-                [-h|--host HOST]          host address / host name
-                [-p|--serverdir PATH]     directory to be accessed on the remote host
-	       		[-l|--localdir PATH]      the remote directory will be placed here
-                [-a|--hostalias STRING]   name for the local portal to the remote directory
-                [-v|--vpn SERVERNAME]     enter this option to tunnel via VPN (address required; macOS only)
+\tBasic usage, enter inputs at prompt but also use vpn
 
-     Example ::
+\t\t${0##*/} --vpn
 
-      	Basic usage, program will prompt user for basic inputs
+\tManually Specify All Options and connect to a server through a vpn tunnel
+       
+\t\t${0##*/} -u guest -h 192.168.1.11 -p / -l /Volumes/ -a awesomeserver -v securvpn.connected.org
 
-      			${0##*/}
+\tBanish (Stop) Zombie Connection (this will clean up all symlinks & umount the folder)
 
-      	Basic usage, enter inputs at prompt but also use vpn
+\t\t${0##*/} -u guest -h 192.168.1.11 -p / -l /Volumes/ -a awesomeserver -v securvpn.connected.org banish
 
-      			${0##*/} --vpn
+\t...OR enter inputs at prompt (assuming VPN connection)
 
-      	Manually Specify All Options and connect to a server through a vpn tunnel
-               
-        	    ${0##*/} -u guest -h 192.168.1.11 -p / -l /Volumes/ -a awesomeserver -v securvpn.connected.org
-
-      	Banish (Stop) Zombie Connection (this will clean up all symlinks & umount the folder)
-
-      			${0##*/} -u guest -h 192.168.1.11 -p / -l /Volumes/ -a awesomeserver -v securvpn.connected.org banish
-
-      		OR enter inputs at prompt (assuming VPN connection)
-
-      			${0##*/} --vpn banish
-
-
+\t\t${0##*/} --vpn banish
+\n
 EOF
+)
+moreinfotxt=$(cat <<EOF
+
+🚩 Caveats & Info :: 
+
+* SSH Agent is required:
+  This program relies on an active ssh-agent running via keychain to maintain passwordless logins. The user will be taken through the ssk key installation if ssh-agent is not detected with an active private key (usually ~/.ssh/id_rsa or id_dsa).
+
+* Compatible with VPN:
+  You can connect to servers hidden behind a firewall if you have VPN credentials for the protected network. A persistent VPN connection will be setup and established if the user species the --vpn option.  Type 'vpn-connect help' for more information.
+
+* Mounts Home Directory on Remote Server by Default:
+  ${0##*/} will link the desired remote file system into the home directory prior to sshfs-ing into the user's home directory on the remote host. The home directory is preferred to maintain consistency in filepaths and avoid permissions issues. Also keeps things clean.
+
+* Log Files:
+  Zombie signals and log files can be found under ~/.ssh/.autosshfs/*.log. Delete the appropriate zombie file in this directory if banish doesn't succesfully disconnect the remote file system.
+
+* Default Settings:
+  SSHFS is executed with the following optimized settings: -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
+
+* Web Resources:
+  https://en.wikipedia.org/wiki/Filesystem_in_Userspace
+  https://en.wikipedia.org/wiki/SSHFS
+  http://www.funtoo.org/Keychain
+  http://www.infradead.org/openconnect/
+\n 
+EOF
+)
+
+[ -z "${moreinfo}" ] && echo -e "${helptxt}" && exit
+[ ! -z "${moreinfo}" ] && echo -e "${helptxt}${moreinfotxt}" && exit
 } 
 ##
 while :; do
 	case ${1} in
 		'help')
+			shift
 			show_help
-			exit
 		;;
+		'moreinfo')
+			moreinfo='showmore'
+			shift
+			show_help
+		;;		
 		-v|--vpn)
-		vpn='usevpn'
+			vpn='usevpn'
 			if [ -n "${2}" ]; then
 				vpnservername=${2}
 				shift
@@ -156,7 +179,7 @@ EOF
 [ -z ${user} ] && echo -e "\nPlease Enter Username @ ${host} ::  " && read -p "▶️  " user
 [ -z ${hostalias} ] && echo -e "\nEnter Alias for Remote File System (i.e. something descriptive for what you're mounting) ::  " && read -p "▶️  " hostalias
 [ -z ${mount_this} ] && echo -e "\nEnter Remote File System Path You Would Like to Mount as ${hostalias} ::  " && read -p "▶️  " mount_this
-[ -z ${mount_here} ] && echo -e "\nWhere would you like to place ${mount_this}? (enter path to folder on local machine) ::  " && read -p "▶️  " mount_here
+#[ -z ${mount_here} ] && echo -e "\nWhere would you like to place ${mount_this}? (enter path to folder on local machine) ::  " && read -p "▶️  " mount_here
 [ ! -z ${vpn} ] && [ -z ${vpnservername} ] && echo -e "\nEnter VPN address to tunnel through ::  " && read -p "▶️  " vpnservername
 ##
 # Define Function
@@ -228,7 +251,8 @@ function occultsshfs_checksshkeys(){
 	# use key if exists 
 	[ "${currentkey}" ] && echo -e "   🔑  SSH Keys are Currently Active: (${currentkey}) \n"
 	## maybe modify setup-sshkeys to be more flexible and do certain tasks with input args?
-	[ -z "${currentkey}" ] || [ -z "$(type start_keychain)" ] &&  echo -e "❗️❗️  No Active Encryption Key, SSH agent or Passphrase Keychain Detected!" && echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n"  && setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
+	## this needs some modification still
+	[ -z "${currentkey}" ] || [ -z "$(which keychain)" ] && echo -e "❗️❗️  No Active Encryption Key, SSH agent or Passphrase Keychain Detected!\n **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n"  && setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
 }
 # Define Function
 ## Check For Existing Host Alias & Fix Naming Conflicts If Found
@@ -263,7 +287,7 @@ function occultsshfs_checkalias(){
 				#echo -e "\n\t * * Unique identifier ${newhostalias} has been appended to distinguish distinct file systems\n"
 				# Otherwise leaves things alone if the desired filesystems match between user and alias origin							
 			elif [ "${identity}" = "${mount_this}" ]; then
-				echo -e "\n✅    Link to FileSystem Already Exists on ${user}@${host}:${link} <--> ${identity}"
+				#echo -e "\n✅    Link to FileSystem Exists on ${user}@${host}:${link} <--> ${identity}"
 				hostalias=$(basename ${link})
 				break
 			fi
@@ -278,18 +302,19 @@ function occultsshfs_banish(){
 	echo -e "\t\t   ${user}@${host}:${mount_this} <-- 💥  --> $(hostname):${mount_here}/${hostalias}"
 	ssh ${user}@${host} "[ -e ${mount_this}/$(whoami).$(hostname).bindzombie ] && unlink ${mount_this}/$(whoami).$(hostname).bindzombie"	
 	# Get Correct Alias
-	occultsshfs_checkalias $(ssh ${user}@${host} 'echo ${HOME}')
+	occultsshfs_checkalias
 	if [ -e ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie ]; then
 		rm ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
 	fi
 	if [ -d $mount_here/${hostalias} ]; then
 		[ -h $mount_here/$(whoami).$(hostname).bindzombie ] && unlink -v $mount_here/$(whoami).$(hostname).bindzombie
 		umount -f ${mount_here}/${hostalias} > /dev/null
-		## Add something here to check if umount failed (be very careful)
 		sleep 1
-		[ -d ${mount_here}/${hostalias} ] && rm -rv ${mount_here}/${hostalias}
+		## Call function recursively until unmount succeeds (might need time out to avoid endless loops)
+		[ -e $mount_here/$(whoami).$(hostname).bindzombie ] && occultsshfs_banish
+		[ ! -e ${mount_here}/${hostalias}/$(whoami).$(hostname).bindzombie ] && ssh ${user}'@'${host} "rm ${mount_here}/$(whoami).$(hostname).bindzombie"
 	fi
-	echo -e "\n✅ Zombie Signal Has Been Killed"
+	echo -e "\n✅    Zombie Signal Has Been Killed"
 	echo "---------------------------------------------------------------------------------------------------------------------"
 	exit	
 }
@@ -305,11 +330,11 @@ function occultsshfs_occultritual(){
 	# Check For Naming Conflicts (Don't Overwrite Links!)
 	occultsshfs_checkalias
 	# Create Binding in Remote Home Directory
-	echo -e "\n⛓    Binding Remote File System to Local Host  ⛓\n"
+	echo -e "\n⛓    Binding Remote File System to Local Host  ⛓"
 	local binding="${HOSTHOME}/.ssh/.autosshfs/$(whoami).$(hostname).${hostalias}.bindzombie"
 	ssh ${user}@${host} "mkdir -vp ${HOSTHOME}/.ssh/.autosshfs; [ ! -e ${binding} ] && touch ${binding}"
 	# Link Remote FileSystem to Remote Home Directory with Anchor Once Host Alias Checks Out
-	echo -e "\n↔️    Soft-Linking Remote File Systems on ${user}@${host} :: ${mount_this} <- - - -> ${HOSTHOME}/${hostalias}\n"
+	echo -e "\n\tSoft-Linking Remote File Systems on ${user}@${host} :: ${mount_this} ↔️  ${HOSTHOME}/${hostalias}"
 	ssh ${user}@${host} "[ ! -e ${HOSTHOME}/${hostalias} ] && ln -s ${mount_this} ${HOSTHOME}/${hostalias}"
 }
 # Define Function 
@@ -320,9 +345,12 @@ function occultsshfs_raisezombie(){
 	# Create signal for loop - don't stop until signal is deleted (via banish)
 	touch ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
 	while [ -e "${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie" ]; do
-		if [ ! -e $mount_here/$(whoami).$(hostname).bindzombie ]; then
+		if [ ! -e ${mount_here}/$(whoami).$(hostname).bindzombie ]; then
 			echo -e "⚰👻  Resurrecting SSHFS Connection * *  $(date) - ($mount_here/$(whoami).$(hostname).bindzombie does not exist)\n"
 			sshfs ${user}@${host}:${HOSTHOME} $mount_here -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
+			sleep 1
+			# Create Anchor/Binding - this is a way of knowing that the directory is readable with remote contents
+			touch ${mount_here}/$(whoami).$(hostname).bindzombie
 			if [ -e $mount_here/$(whoami).$(hostname).bindzombie ]; then
 				echo "   ✅  Succesfully Raised Zombie In ${mount_here}" && open 
 		        if [ $(uname) = 'Darwin' ]; then
@@ -340,10 +368,10 @@ function occultsshfs_raisezombie(){
 function occultsshfs_castspell(){
 	# Check that sshfs is installed
 	occultsshfs_dependencies
-	# Banish Zombie & BindingSpell 
-	[ ${banish} ] && occultsshfs_banish
 	# Get Path to Home Directory for Remote User
 	HOSTHOME=$(ssh ${user}@${host} 'echo ${HOME}')
+	# Banish Zombie & BindingSpell 
+	[ ${banish} ] && occultsshfs_banish
 	[ -z "${HOSTHOME}" ] && echo '❗️  Could not determine remote home directory path - username/hostname may be incorrect, exiting...' && exit
 	# First Check If Remote FileSystem is Writable
 	occultsshfs_checkperms
@@ -356,7 +384,7 @@ function occultsshfs_castspell(){
 # Execute top level function 
 occultsshfs_castspell
 echo ''
-echo "Running Zombie in Background - you can check status at ~/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log"
+echo -e "\tRunning Zombie in Background - you can check status at ~/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log"
 echo '---------------------------------------------------------------------------------------------------------------------'
 #####################################
 ### Shady El Damaty ; 3 May 2017
