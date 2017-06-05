@@ -1,5 +1,8 @@
 #!/bin/bash
 ## Generate Public/Private Key Pairs for Keyless Login to Remote Host
+##
+# TO DO ::
+##          do you want to overwrite files each time or only create if they don't exist?
 
 client=$(hostname)  # Origin 
 user=$(whoami)      # User @ Origin
@@ -255,7 +258,7 @@ function stdssh_cpkey(){
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
     echo -e "Appending $client pubkey to authorized keys on $host"
-    cat ${ssh_home}'/'${key} | ssh ${user}'@'${host} 'mkdir ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+    cat ${ssh_home}'/'${key} | ssh ${user}'@'${host} 'mkdir -v ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
     #echo -e "Sending $client private key to $host"
 	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
     #echo -e "Setting up $client private key on $host"
