@@ -200,6 +200,7 @@ function occultsshfs_dependencies(){
         	echo 'Sorry this OS is not supported'
         	exit
         fi		
+        [ -z $(which vpn-connect) ] && git clone http://github.com/seldamat/vpn-tools ${HOME}/
 	fi
 	## NEED TO CHECK FOR VPN CONNECT AND SETUPSSKEYS
 }
