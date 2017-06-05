@@ -200,9 +200,8 @@ function occultsshfs_dependencies(){
         	echo 'Sorry this OS is not supported'
         	exit
         fi		
-        [ -z $(which vpn-connect) ] && git clone http://github.com/seldamat/vpn-tools ${HOME}/
+        [ -z $(which vpn-connect) ] && git clone http://github.com/seldamat/vpn-tools ${HOME}/ && echo -e "#vpn-connected added to path $(date)\nexport PATH=$PATH:${HOME}/vpn-tools" >> "${HOME}/.bash_profile"
 	fi
-	## NEED TO CHECK FOR VPN CONNECT AND SETUPSSKEYS
 }
 ## Define Function
 # Uninstall sshfs
