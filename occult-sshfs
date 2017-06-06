@@ -224,7 +224,7 @@ function occultsshfs_uninstall(){
 # Define Function
 ## Assemble input arguments to final formats
 function occultsshfs_buildcoffin(){
-	mount_here=${mount_here}/${hostalias}
+	mount_here=${mount_here}/${user}'@'${host}
 	# maybe check write permissions here?
 	echo -e "\n⚰    Setting up Local Coffin for Zombie: $mount_here\n" && [ ! -d ${mount_here} ] && mkdir -p ${mount_here}
 	[ ! -e "${HOME}/.ssh/.autosshfs" ] && mkdir -p ${HOME}/.ssh/.autosshfs
