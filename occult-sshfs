@@ -183,7 +183,7 @@ EOF
 [ ! -z ${vpn} ] && [ -z ${vpnservername} ] && echo -e "\nEnter VPN address to tunnel through ::  " && read -p "▶️  " vpnservername
 ##
 # Define Function
-## Check that sshfs is installed
+## Check that brew, sshfs, osxfuse, vpn-connect is installed
 function occultsshfs_dependencies(){
 	if [ -z $(which sshfs) ]; then
 		echo -e "\n Installing SSHFS "
@@ -200,8 +200,8 @@ function occultsshfs_dependencies(){
         	echo 'Sorry this OS is not supported'
         	exit
         fi		
-        [ -z $(which vpn-connect) ] && git clone http://github.com/seldamat/vpn-tools ${HOME}/ && echo -e "#vpn-connected added to path $(date)\nexport PATH=$PATH:${HOME}/vpn-tools" >> "${HOME}/.bash_profile"
 	fi
+	[ -z $(which vpn-connect) ] && git clone http://github.com/seldamat/vpn-tools ${HOME}/ && echo -e "#vpn-connected added to path $(date)\nexport PATH=$PATH:${HOME}/vpn-tools" >> "${HOME}/.bash_profile"
 }
 ## Define Function
 # Uninstall sshfs
@@ -240,7 +240,7 @@ function occultsshfs_checkvpn(){
 		printf "\b${sp:i++%${#sp}:1} Seeking VPN Connection...\r"
 	done
 	# give time to log in
-	[ ! -z "$(echo $(ps aux | grep "[g]uvpn.georgetown.edu"))"] && echo -e '🔐  logging into vpn..\n' && sleep 1
+	sleep 1 && [ ! -z "$(echo $(ps aux | grep "[g]uvpn.georgetown.edu"))"] && echo -e '🔐  logging into vpn..\n' && sleep 1
 }
 # Define Function
 ## Check Existence of SSH Keys, ssh-agent & keychain
@@ -304,16 +304,16 @@ function occultsshfs_banish(){
 	occultsshfs_checkalias
 	# Delete Zombie Signal
 	if [ -e ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie ]; then
-		rm ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
+		rm -v ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie
 	fi
 	# Remove Binding/Anchor
 	if [ -d $mount_here/${hostalias} ]; then
-		[ -e $mount_here/${hostalias}/$(whoami).$(hostname).bindzombie ] && rm -v $mount_here/${hostalias}/$(whoami).$(hostname).bindzombie
+		[ -e "${mount_here}/${hostalias}/$(whoami).$(hostname).bindzombie" ] && rm -v $mount_here/${hostalias}/$(whoami).$(hostname).bindzombie
 		echo ''
-		umount -f ${mount_here}/${hostalias} > /dev/null
+		umount -f "${mount_here}/${hostalias}" > '/dev/null'
 		sleep 1
 		## Call function recursively until unmount succeeds (might need time out to avoid endless loops)
-		[ -e $mount_here/$(whoami).$(hostname).bindzombie ] && occultsshfs_banish
+		[ -e "${mount_here}/$(whoami).$(hostname).bindzombie" ] && occultsshfs_banish
 	fi
 	echo -e "\n✅    Zombie Signal Has Been Killed =-= $(date)"
 	echo "---------------------------------------------------------------------------------------------------------------------"
@@ -325,7 +325,7 @@ function occultsshfs_occultritual(){
 	# Build a Coffin for the Zombie (create directory for mounting & binding)
 	occultsshfs_buildcoffin
 	# Establish VPN connection if required
-	[ ${vpn} ] && occultsshfs_checkvpn
+	[ "${vpn}" ] && occultsshfs_checkvpn
 	# Check for SSH keys
 	occultsshfs_checksshkeys
 	# Check For Naming Conflicts (Don't Overwrite Links!)
