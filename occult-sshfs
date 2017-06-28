@@ -322,8 +322,6 @@ function occultsshfs_banish(){
 # Define Function
 ## Anchor Desired FileSystem to Home Directory on Remote Host
 function occultsshfs_occultritual(){
-	# Build a Coffin for the Zombie (create directory for mounting & binding)
-	occultsshfs_buildcoffin
 	# Establish VPN connection if required
 	[ "${vpn}" ] && occultsshfs_checkvpn
 	# Check for SSH keys
@@ -382,6 +380,8 @@ function occultsshfs_castspell(){
 	done
 }
 
+# Build a Coffin for the Zombie (create directory for mounting & binding)
+occultsshfs_buildcoffin
 # Execute top level function 
 occultsshfs_castspell > ${HOME}/.ssh/.autosshfs/${user}.${host}.${hostalias}.zombie.log 2>&1 & 
 echo ''
