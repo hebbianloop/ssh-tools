@@ -279,7 +279,7 @@ function stdssh_addkeychain(){
             echo '\n\n## add keychain to path\nexport PATH="${HOME}/keychain:${PATH}"'
         fi
     fi
-    echo -e '\n\n## alias to start keychain\nalias start_keychain=eval `keychain --agents ssh --eval '${privkey}'`\n\n' >> ${HOME}/.bash_profile
+    echo -e '\n\n## alias to start keychain\nalias start_keychain="eval `keychain --agents ssh --eval '${privkey}'`"\n\n' >> ${HOME}/.bash_profile
     source ${HOME}/.bash_profile
 }
 # Define Function
