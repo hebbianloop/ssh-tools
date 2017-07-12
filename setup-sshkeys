@@ -308,7 +308,7 @@ function stdssh_addagent(){
             if [ -z $(type start_keychain) ]; then
                 echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
                 read proceed
-                if [ "{$proceed" = 'Y' ] || [ "{$proceed" = 'y' ]; then 
+                if [ "${proceed}" = 'Y' ] || [ "${proceed}" = 'y' ]; then 
                     echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
                     setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
                 else
