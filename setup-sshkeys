@@ -258,7 +258,8 @@ function stdssh_cpkey(){
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
     echo -e "Appending $client pubkey to authorized keys on $host"
-    cat ${ssh_home}'/'${key} | ssh ${user}'@'${host} 'mkdir -v ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+    cat ${ssh_home}'/'${key} | "ssh ${user}@${host} \"mkdir -v ~/.ssh; cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys\""
+    ### this would be for bidirectional logins
     #echo -e "Sending $client private key to $host"
 	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
     #echo -e "Setting up $client private key on $host"
@@ -278,7 +279,7 @@ function stdssh_addkeychain(){
             echo '\n\n## add keychain to path\nexport PATH="${HOME}/keychain:${PATH}"'
         fi
     fi
-    echo -e ''\n\n## alias to start keychain\nalias start_keychain='eval `keychain --agents ssh --eval '${privkey}'`''\n\n' >> ${HOME}/.bash_profile
+    echo -e `\n\n## alias to start keychain\nalias start_keychain='eval `keychain --agents ssh --eval '${privkey}'`''\n\n'` >> ${HOME}/.bash_profile
     source ${HOME}/.bash_profile
 }
 # Define Function
@@ -307,11 +308,11 @@ function stdssh_addagent(){
             if [ -z $(type start_keychain) ]; then
                 echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
                 read proceed
-                if [ "{$proceed" = 'Y' ] || [ "{$proceed" = 'y' ]
+                if [ "{$proceed" = 'Y' ] || [ "{$proceed" = 'y' ]; then 
                     echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
                     setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
                 else
-                    echo -e "\nssh keys are required for automatic remote log in.. exiting.."
+                	echo -e "\nssh keys are required for automatic remote log in.. exiting.."
                     exit
                 fi
             else
@@ -354,12 +355,12 @@ function stdssh_run(){
     confirm_input
     ## Check for Generate Keys Flag
     [ ! -z ${genkeys} ] && stdssh_genaddkeys
-    ## Check for Copy Keys Flag
-    [ ! -z ${cpkeys} ] && stdssh_cpkey ${host} ${user} ${key}
+    ## Check for Copy Keys Flag - copy pub keys
+    [ ! -z ${cpkeys} ] && stdssh_cpkey ${host} ${user} ${pubkey}
     ## Check for Add SSH Agent Flag
-    [ ! -z ${addagent} ] && stdssh_addagent ${key}
+    [ ! -z ${addagent} ] && stdssh_addagent ${privkey}
     ## Run Entire Pipeline (Default)
-    [ ! -z ${exec_all} ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${user} ${key} && stdssh_addagent ${key}
+    [ ! -z ${exec_all} ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${user} ${pubkey} && stdssh_addagent ${privkey}
     ## Set Appropriate Permissions
     stdssh_perms
 }
