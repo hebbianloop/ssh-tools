@@ -274,12 +274,12 @@ function stdssh_addkeychain(){
                 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
             fi
             brew install keychain
+            echo -e '\n\n## alias to start keychain\nalias start_keychain=''eval `keychain --agents ssh --eval '${privkey}'`''\n\n' >> ${HOME}/.bash_profile
         elif [ $(uname) = 'Linux' ]; then
             git clone https://github.com/funtoo/keychain.git ${HOME}/keychain
             echo '\n\n## add keychain to path\nexport PATH="${HOME}/keychain:${PATH}"'
         fi
     fi
-    echo -e '\n\n## alias to start keychain\nalias start_keychain=''eval `keychain --agents ssh --eval '${privkey}'`''\n\n' >> ${HOME}/.bash_profile
     source ${HOME}/.bash_profile
 }
 # Define Function
@@ -366,7 +366,7 @@ function stdssh_run(){
 }
 
 # Run STDSSH
-stdssh_run $host $user_alias $publickey $privkey
+stdssh_run $host $user_alias ${pubkey} ${privkey}
 
 #####################################
 ### Shady El Damaty ; 24 April 2017
