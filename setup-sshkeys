@@ -224,8 +224,7 @@ EOF
     )   
 # Check if user_alias just wants to see status
 [ ! ${proceed} ] || [ ! ${quiet} ] && echo -e ${confirm_user_input}
-[ ! ${quiet} ] && [ -z ${proceed} ] && read -p "Setup New Handshake? [Y/N]  :: " proceed
-echo -e "\n"
+[ ! ${quiet} ] && [ -z ${proceed} ] && read -p "Setup New Handshake? [Y/N]  :: " proceed && echo -e "\n"
 [ "${proceed}" = "N" ] || [ "${proceed}" = "n" ] && exit
 }
 # Define Function
@@ -258,7 +257,7 @@ function stdssh_cpkey(){
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
     echo -e "Appending $client pubkey to authorized keys on $host"
-    cat ${ssh_home}'/'${key} | ssh ${user}@${host} 'mkdir -v ${HOME}/.ssh; cat >> ${HOME}/.ssh/authorized_keys && chmod 600 ${HOME}/.ssh/authorized_keys'
+    cat ${ssh_home}'/'${key} | ssh ${user}@${host} '[ ! -d ${HOME}/.ssh ] && mkdir -v ${HOME}/.ssh; cat >> ${HOME}/.ssh/authorized_keys && chmod 600 ${HOME}/.ssh/authorized_keys'
     ### this would be for bidirectional logins
     #echo -e "Sending $client private key to $host"
 	#scp ${ssh_home}'/'${privkey} ${username}'@'${host}:'/tmp/'${privkey}'.transfer.'${rseed}
@@ -274,13 +273,13 @@ function stdssh_addkeychain(){
                 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
             fi
             brew install keychain
-            echo -e '\n\n## alias to start keychain\nalias start_keychain=''eval `keychain --agents ssh --eval '${privkey}'`''\n\n' >> ${HOME}/.bash_profile
         elif [ $(uname) = 'Linux' ]; then
             git clone https://github.com/funtoo/keychain.git ${HOME}/keychain
             echo '\n\n## add keychain to path\nexport PATH="${HOME}/keychain:${PATH}"'
         fi
+        echo -e '\n\n## alias to start keychain\nalias start_keychain=''eval `keychain --agents ssh --eval '${privkey}'`''\n\n' >> ${HOME}/.bash_profile        
+        source ${HOME}/.bash_profile
     fi
-    source ${HOME}/.bash_profile
 }
 # Define Function
 ## Setup and add private key to agent
@@ -366,7 +365,7 @@ function stdssh_run(){
 }
 
 # Run STDSSH
-stdssh_run $host $user_alias ${pubkey} ${privkey}
+stdssh_run ${host} ${user_alias} ${pubkey} ${privkey}
 
 #####################################
 ### Shady El Damaty ; 24 April 2017
