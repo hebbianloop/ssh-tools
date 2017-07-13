@@ -307,7 +307,7 @@ function stdssh_addagent(){
             echo -e "\n ❗️❗️  No Active Encryption Key Detected!"
             echo -e "\t🔑 Adding ${ssh_home}/${privkey} to keychain "
             # Add private key
-            keychain --agents ssh --eval "${privkey}" # this alias is created in stdssh_addkeychain by adding a alias definition to .bash_profile
+            eval `keychain --agents ssh --eval ${privkey}` # this alias is created in stdssh_addkeychain by adding a alias definition to .bash_profile
         fi
     fi
 }
