@@ -304,21 +304,11 @@ function stdssh_addagent(){
         if [ ! -z "${currentkey}" ]; then
             echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login ($currentkey)"
         else
-            if [ -z "$(type start_keychain)" ]; then
-                echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
-                read proceed
-                if [ "${proceed}" = 'Y' ] || [ "${proceed}" = 'y' ]; then 
-                    echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
-                    stdssh_run $host $user $pubkey $privkey
-                else
-                	echo -e "\nssh keys are required for automatic remote log in.. exiting.."
-                    exit
-                fi
-            else
-                # Add private key
-                ssh-add -K ${ssh_home}/${privkey}                
-                start_keychain
-            fi
+            echo -e "\n ❗️❗️  No Active Encryption Key Detected!"
+            echo -e "\t🔑 Adding ${ssh_home}/${privkey} to keychain "
+            # Add private key
+            ssh-add -K ${ssh_home}/${privkey}
+            start_keychain # this alias is created in stdssh_addkeychain by adding a alias definition to .bash_profile
         fi
     fi
 }
