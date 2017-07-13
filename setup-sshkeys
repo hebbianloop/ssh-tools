@@ -256,7 +256,7 @@ function stdssh_cpkey(){
 	local key=${3}
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
-    echo -e "Appending $client pubkey to authorized keys on $host"
+    echo -e "Appending $client ${key} to authorized keys on $host"
     cat ${ssh_home}'/'${key} | ssh ${user}@${host} '[ ! -d ${HOME}/.ssh ] && mkdir -v ${HOME}/.ssh; cat >> ${HOME}/.ssh/authorized_keys && chmod 600 ${HOME}/.ssh/authorized_keys'
     ### this would be for bidirectional logins
     #echo -e "Sending $client private key to $host"
@@ -300,16 +300,16 @@ function stdssh_addagent(){
         echo -e '\n## quit ssh-agent at logout\n[ -n "$SSH_AUTH_SOCK" ] && eval `ssh-agent -k`\n\n' >> ${HOME}/.bash_logout 
     else
         stdssh_addkeychain
-        currentkey=$(ssh-add -L | awk '{print $3}')
-        if [ ! -z $currentkey ]; then
+        currentkey=$(ssh-add -L | sed 's/The agent has no identities.//' | awk '{print $3}')
+        if [ ! -z "${currentkey}" ]; then
             echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login ($currentkey)"
         else
-            if [ -z $(type start_keychain) ]; then
+            if [ -z "$(type start_keychain)" ]; then
                 echo -e "\n ❗️❗️  No Active Encryption Key Detected! Would you like to generate ssh keys for password-less login?\n [Y/N]"
                 read proceed
                 if [ "${proceed}" = 'Y' ] || [ "${proceed}" = 'y' ]; then 
                     echo -e " **  Creating Public/Private RSA Key Pairs with 4096 Bit Length, Secure Passphrase & SSH-Agent Management via Keychain\n\n" 
-                    setup-sshkeys -uname $user -host $host --rsa -bits 4096 --x11 --keychain
+                    stdssh_run $host $user $pubkey $privkey
                 else
                 	echo -e "\nssh keys are required for automatic remote log in.. exiting.."
                     exit
@@ -328,7 +328,7 @@ function stdssh_reset(){
     ## Reset?
     if [ ${resetkeys} ]; then
         echo -e '\n'
-        read -p "Are you sure you want to delete all ssh-agent files, .bash_logout and .ssh directory?  [Y/N]  :: " doublecheck
+        read -p "Are you sure you want to delete all ssh-agent files, .bash_logout and local keys?  [Y/N]  :: " doublecheck
         if [ "${doublecheck}" = 'Y' ] || [ "${doublecheck}" = 'y' ]; then
             echo -e "\n\n 🔥🗑  Removing All Local Keys, Authorized Hosts & ssh-agent Settings"
             rm -v ${ssh_home}/${privkey}
