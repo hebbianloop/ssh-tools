@@ -256,7 +256,7 @@ function stdssh_cpkey(){
 	local key=${3}
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
-    echo -e "Appending $client ${key} to authorized keys on $host"
+    echo -e "Appending ${client}:${ssh_home}/${key} to authorized keys list on ${user}@${host}:${ssh_home}/authorized_keys"
     cat ${ssh_home}'/'${key} | ssh ${user}@${host} '[ ! -d ${HOME}/.ssh ] && mkdir -v ${HOME}/.ssh; cat >> ${HOME}/.ssh/authorized_keys && chmod 600 ${HOME}/.ssh/authorized_keys'
     ### this would be for bidirectional logins
     #echo -e "Sending $client private key to $host"
