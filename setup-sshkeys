@@ -341,7 +341,7 @@ function stdssh_run(){
     # Check for Reset
     stdssh_reset
     ## Run only if User confirms input arguments 
-    confirm_input
+    #confirm_input
     ## Check for Generate Keys Flag
     [ ! -z ${genkeys} ] && stdssh_genaddkeys
     ## Check for Copy Keys Flag - copy pub keys
