@@ -194,6 +194,8 @@ while :; do
 done
 # ----------------------------------------------------------------
 #                  Build Private and Public Key Names
+## TODO 
+##      -- uhh this control flow seems weird
 [ -z ${privkey} ] && privkey='id_'${keytype}
 [ -z ${pubkey} ] && pubkey='id_'${keytype}'.pub'
 #                 Assign Option String for SSH-KEYGEN
