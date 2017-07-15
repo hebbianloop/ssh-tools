@@ -307,8 +307,6 @@ function stdssh_addagent(){
             echo -e "\t🔑 Adding ${ssh_home}/${privkey} to keychain "
             # Add private key
             eval `keychain --agents ssh --eval ${privkey}` # this alias is created in stdssh_addkeychain by adding a alias definition to .bash_profile
-            echo 'Current Keys:'
-            ssh-add -L
         fi
     fi
 }
