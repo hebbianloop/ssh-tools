@@ -2,25 +2,20 @@
 ## Generate Public/Private Key Pairs for Keyless Login to Remote Host
 ##
 # TO DO ::
-##          do you want to overwrite files each time or only create if they don't exist?
+##          
 
 client=$(hostname)  # Origin 
 user=$(whoami)      # User @ Origin
-
 host=$(hostname)        # Destination
 user_alias=$(whoami)    # User Name @ Destination
-
 ssh_home="${HOME}/.ssh"              # Stash ssh deets here
 sshagentfile="${HOME}/.ssh_agent"    # Parameters for ssh-agent
-
 keytype='dsa'
 x11=''
-
 proceed=''
 quiet=''
 resetkeys=''
 bits=''
-
 exec_all='true'
 cpkeys=''
 genkeys=''
@@ -235,6 +230,7 @@ function stdssh_genaddkeys(){
     # Check if ssh home dir exists
 	[ ! -d ${ssh_home} ] && mkdir -p ${ssh_home}
     # Generate keys
+    echo 'Generating Keys'
     ssh-keygen ${opts}
     # Create authorized keys file
     [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys
