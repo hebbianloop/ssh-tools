@@ -265,6 +265,7 @@ function stdssh_cpkey(){
 # Define Function
 ## Use keychain utility to add keys to ssh-agent (Very convenient)
 function stdssh_addkeychain(){
+    export PATH=$PATH:/usr/local/bin
     if [ -z $(which keychain) ]; then
         if [ $(uname) = 'Darwin' ]; then
             if [ -z $(which brew) ]; then
