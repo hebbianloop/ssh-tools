@@ -220,6 +220,7 @@ local confirm_user_input=$(cat <<-EOF
     \t    🔑  PRIVATEKEY\t\t      ::      ${privkey}\n
     \t    🗝  PUBLICKEY\t\t       ::      ${pubkey}\n\n    
     \t    ⚙   KEYGEN OPTIONS\t    ::      ${opts}
+    
 EOF
     )   
 # Check if user_alias just wants to see status
