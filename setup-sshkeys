@@ -222,7 +222,7 @@ EOF
     )   
 # Check if user_alias just wants to see status
 [ ! ${proceed} ] || [ ! ${quiet} ] && echo -e ${confirm_user_input}
-[ ! ${quiet} ] && [ -z ${proceed} ] && echo "Setup New Handshake? [Y/N]  :: " && read -p "▶️  " proceed
+[ ! ${quiet} ] && [ -z ${proceed} ] && read -p "▶️  Setup New Handshake? [Y/N]  ::  " proceed
 [ "${proceed}" = "N" ] || [ "${proceed}" = "n" ] && exit
 }
 # Define Function
@@ -254,7 +254,7 @@ function stdssh_cpkey(){
 	local key=${3}
 	local rseed=${RANDOM}
     echo -e "\n  🖥   📡  🤙  🎛  🤘  Securely Transmitting Secret Handshake \n"
-    echo -e "Appending ${client}:${ssh_home}/${key} to authorized keys list on ${user}@${host}:${ssh_home}/authorized_keys"
+    echo -e "Appending ${ssh_home}/${key} to authorized keys list on ${user}@${host}"
     cat ${ssh_home}'/'${key} | ssh ${user}@${host} '[ ! -d ${HOME}/.ssh ] && mkdir -v ${HOME}/.ssh; cat >> ${HOME}/.ssh/authorized_keys && chmod 600 ${HOME}/.ssh/authorized_keys'
     ### this would be for bidirectional logins
     #echo -e "Sending $client private key to $host"
@@ -297,7 +297,8 @@ function stdssh_addagent(){
         echo -e '\n## start ssh agent at login\n[ -z "$SSH_AUTH_SOCK" ] && eval `ssh-agent -s` && ssh-add '${ssh_home}'/'${privkey}'\n\n' >> ${HOME}/.bash_profile
         echo -e '\n## quit ssh-agent at logout\n[ -n "$SSH_AUTH_SOCK" ] && eval `ssh-agent -k`\n\n' >> ${HOME}/.bash_logout 
     else
-        stdssh_addkeychain
+        stdssh_addkeychain; 
+        echo -e "\n..Searching for existing agent and key"
         currentkey=$(ssh-add -L | sed 's/The agent has no identities.//' | awk '{print $3}')
         if [ ! -z "${currentkey}" ]; then
             echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login ($currentkey)"
