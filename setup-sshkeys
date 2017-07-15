@@ -276,7 +276,6 @@ function stdssh_addkeychain(){
             git clone https://github.com/funtoo/keychain.git ${HOME}/keychain
             echo '\n\n## add keychain to path\nexport PATH="${HOME}/keychain:${PATH}"'
         fi
-        echo -e '\n\n'## alias to start keychain\nalias start_keychain='eval `keychain --agents ssh --eval '${privkey}'`''\n\n' >> ${HOME}/.bash_profile        
         source ${HOME}/.bash_profile
     fi
 }
@@ -339,7 +338,7 @@ function stdssh_run(){
     # Check for Reset
     stdssh_reset
     ## Run only if User confirms input arguments 
-    #confirm_input
+    confirm_input
     ## Check for Generate Keys Flag
     [ ! -z ${genkeys} ] && stdssh_genaddkeys
     ## Check for Copy Keys Flag - copy pub keys
