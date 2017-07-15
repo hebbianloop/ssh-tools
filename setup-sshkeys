@@ -220,12 +220,12 @@ local confirm_user_input=$(cat <<-EOF
     \t    🔑  PRIVATEKEY\t\t      ::      ${privkey}\n
     \t    🗝  PUBLICKEY\t\t       ::      ${pubkey}\n\n    
     \t    ⚙   KEYGEN OPTIONS\t    ::      ${opts}
-    
+
 EOF
     )   
 # Check if user_alias just wants to see status
 [ ! ${proceed} ] || [ ! ${quiet} ] && echo -e ${confirm_user_input}
-[ ! ${quiet} ] && [ -z ${proceed} ] && read -p "Setup New Handshake? [Y/N]  :: " proceed && echo -e "\n"
+[ ! ${quiet} ] && [ -z ${proceed} ] && echo "Setup New Handshake? [Y/N]  :: " && read -p "▶️  " proceed
 [ "${proceed}" = "N" ] || [ "${proceed}" = "n" ] && exit
 }
 # Define Function
