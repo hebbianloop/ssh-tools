@@ -299,7 +299,7 @@ function stdssh_addagent(){
     else
         stdssh_addkeychain; 
         echo -e "\n..Searching for existing agent and key"
-        currentkey=$(ssh-add -L | sed 's/The agent has no identities.//' | awk '{print $3}')
+        keychain && currentkey=$(ssh-add -L | sed 's/The agent has no identities.//' | awk '{print $3}')
         if [ ! -z "${currentkey}" ]; then
             echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login ($currentkey)"
         else
@@ -307,6 +307,8 @@ function stdssh_addagent(){
             echo -e "\t🔑 Adding ${ssh_home}/${privkey} to keychain "
             # Add private key
             eval `keychain --agents ssh --eval ${privkey}` # this alias is created in stdssh_addkeychain by adding a alias definition to .bash_profile
+            echo 'Current Keys:'
+            ssh-add -L
         fi
     fi
 }
