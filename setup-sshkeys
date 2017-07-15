@@ -230,7 +230,6 @@ function stdssh_genaddkeys(){
     # Check if ssh home dir exists
 	[ ! -d ${ssh_home} ] && mkdir -p ${ssh_home}
     # Generate keys
-    echo 'Generating Keys'
     ssh-keygen ${opts}
     # Create authorized keys file
     [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys
@@ -245,7 +244,7 @@ function stdssh_perms(){
     chmod 600 ${ssh_home}/${privkey}
 }
 # Define Function
-## This function takes a remote host, username, and path to a private key and copies it
+## This function takes a remote host, username, and path to a public key and copies it
 ## to the home directory on the remote host. 
 function stdssh_cpkey(){
 	local host=${1}
