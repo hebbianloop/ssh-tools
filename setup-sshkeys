@@ -238,8 +238,9 @@ function stdssh_genaddkeys(){
     echo -e "\n ** Adding public key to authorized keys"
 	cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
     # Keep a list of which users/hosts have keypairs
+    ## this can be very handy for an intruder... maybe this should be encrypted? might not make a difference if you're rooted anyway
     [ ! -e ${ssh_home}/keypairs ] && touch ${ssh_home}/keypairs
-    [ -z "$(cat ${ssh_home}/keypairs | grep -o "${user}@${client}->${user_alias}@${host}")" ] && echo '** appending to keypairs list' && echo "${user}@${client}->${user_alias}@${host}" >> ${ssh_home}/keypairs
+    [ -z "$(cat ${ssh_home}/keypairs | grep -o "${user}@${client}->${user_alias}@${host}")" ] && echo ' ** Appending to keypairs list (see ~/.ssh/keypairs)' && echo "${user}@${client}->${user_alias}@${host}" >> ${ssh_home}/keypairs
 }
 # Define Function
 ## Check permissions
