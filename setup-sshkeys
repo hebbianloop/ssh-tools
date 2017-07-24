@@ -222,7 +222,7 @@ EOF
     )   
 # Check if user_alias just wants to see status
 [ ! ${proceed} ] || [ ! ${quiet} ] && echo -e ${confirm_user_input}
-[ ! ${quiet} ] && [ -z ${proceed} ] && read -p "▶️  Setup New Handshake? [Y/N]  ::  " proceed
+[ ! ${quiet} ] && [ -z ${proceed} ] && echo '' && read -p "▶️  Setup New Handshake? [Y/N]  ::  " proceed
 [ "${proceed}" = "N" ] || [ "${proceed}" = "n" ] && exit
 }
 # Define Function
@@ -239,7 +239,7 @@ function stdssh_genaddkeys(){
 	cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
     # Keep a list of which users/hosts have keypairs
     [ ! -e ${ssh_home}/keypairs ] && touch ${ssh_home}/keypairs &&
-    [ -z "$(cat ${ssh_home}/keypairs | grep -o "${user}@${client}->${user_alias}@${host}")" ] && echo "${user}@${client}->${user_alias}@${host}" >> ${ssh_home}/keypairs
+    [ -z "$(cat ${ssh_home}/keypairs | grep -o "${user}@${client}->${user_alias}@${host}")" ] && echo '** appending to keypairs list' && echo "${user}@${client}->${user_alias}@${host}" >> ${ssh_home}/keypairs
 }
 # Define Function
 ## Check permissions
