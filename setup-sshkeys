@@ -238,7 +238,7 @@ function stdssh_genaddkeys(){
     echo -e "\n ** Adding public key to authorized keys"
 	cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
     # Keep a list of which users/hosts have keypairs
-    [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/keypairs
+    [ ! -e ${ssh_home}/keypairs ] && touch ${ssh_home}/keypairs
     [ -z "$(cat ${ssh_home}/keypairs | grep -o "${user}@${client}->${user_alias}@${host}")" ] && $(cat echo "${user}@${client}->${user_alias}@${host}"
 }
 # Define Function
