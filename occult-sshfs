@@ -340,7 +340,7 @@ function occultsshfs_occultritual(){
 ## Loop indefinitely while Zombie Signal Exists & Check for Anchor
 function occultsshfs_raisezombie(){
 	# SSHFS connection
-	sshfs ${user}@${host}:${HOSTHOME} $mount_here -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks	
+	sshfs ${user}@${host}:${HOSTHOME} $mount_here -o Ciphers=arcfour,cache=yes,kernel_cache,defer_permissions,reconnect,follow_symlinks,allow_other	
 	# Create Anchor/Binding - this is a way of knowing that the directory is readable with remote contents
 	touch ${mount_here}/$(whoami).$(hostname).bindzombie && sleep 1
 	# Check to see Binding exists in mounted directory
