@@ -335,7 +335,7 @@ function stdssh_run(){
     local host=${1}
     local user_alias=${2}
     local publickey=${3}
-    local privatekey=${4}
+    local privkey=${4}
     # Check for Reset
     stdssh_reset
     ## Run only if User confirms input arguments 
