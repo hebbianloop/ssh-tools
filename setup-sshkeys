@@ -333,7 +333,7 @@ function stdssh_reset(){
 ## Run STDSSH for a 1-way handshake
 function stdssh_run(){
     local host=${1}
-    local user=${2}
+    local user_alias=${2}
     local publickey=${3}
     local privatekey=${4}
     # Check for Reset
@@ -343,11 +343,11 @@ function stdssh_run(){
     ## Check for Generate Keys Flag
     [ ! -z ${genkeys} ] && stdssh_genaddkeys
     ## Check for Copy Keys Flag - copy pub keys
-    [ ! -z ${cpkeys} ] && stdssh_cpkey ${host} ${user} ${pubkey}
+    [ ! -z ${cpkeys} ] && stdssh_cpkey ${host} ${user_alias} ${pubkey}
     ## Check for Add SSH Agent Flag
     [ ! -z ${addagent} ] && stdssh_addagent ${privkey}
     ## Run Entire Pipeline (Default)
-    [ ! -z ${exec_all} ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${user} ${pubkey} && stdssh_addagent ${privkey}
+    [ ! -z ${exec_all} ] && stdssh_genaddkeys && stdssh_cpkey ${host} ${user_alias} ${pubkey} && stdssh_addagent ${privkey}
     ## Set Appropriate Permissions
     stdssh_perms
 }
