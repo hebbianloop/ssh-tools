@@ -236,7 +236,7 @@ function stdssh_genaddkeys(){
     # Create authorized keys file
     [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys
     echo -e "\n ** Adding public key to authorized keys"
-	echo cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
+	echo testing - "cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys"
 }
 # Define Function
 ## Check permissions
