@@ -235,8 +235,8 @@ function stdssh_genaddkeys(){
     ssh-keygen ${opts}
     # Create authorized keys file
     [ ! -e ${ssh_home}/authorized_keys ] && touch ${ssh_home}/authorized_keys
-    echo -e "\n ** Adding public key to authorized keys\n"
-	cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
+    echo -e "\n ** Adding public key to authorized keys"
+	echo cat ${ssh_home}/${pubkey} >> ${ssh_home}/authorized_keys
 }
 # Define Function
 ## Check permissions
@@ -301,7 +301,7 @@ function stdssh_addagent(){
         echo -e "\n..Searching for existing agent and key"
         keychain && currentkey=$(ssh-add -L | sed 's/The agent has no identities.//' | awk '{print $3}')
         if [ ! -z "${currentkey}" ]; then
-            echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login ($currentkey)"
+            echo -e "\n  🔎 🔑  Found Existing Key Encryption For Automatic Login (${currentkey})"
         else
             echo -e "\n ❗️❗️  No Active Encryption Key Detected!"
             echo -e "\t🔑 Adding ${ssh_home}/${privkey} to keychain "
