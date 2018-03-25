@@ -1,0 +1,14 @@
+Host 141.161.208.9
+    User se394
+        ForwardAgent yes
+
+Host 10.1.3.115
+    User admin
+        ForwardAgent yes
+	    ProxyCommand ssh -q 141.161.208.9  nc 10.1.3.115 22
+
+Host *
+  AddKeysToAgent yes
+  UseKeychain yes
+  IdentityFile /Users/shadyeldamaty/.ssh/id_rsa
+
